@@ -57,44 +57,46 @@ const SignInScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {success ? <Text style={styles.successText}>{success}</Text> : null}
-      {message ? <Text style={styles.successText}>{message}</Text> : null}
+      <View style={styles.innerContainer}>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {success ? <Text style={styles.successText}>{success}</Text> : null}
+        {message ? <Text style={styles.successText}>{message}</Text> : null}
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
 
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Password"
-        secureTextEntry={true}
-        autoCapitalize="none"
-      />
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Password"
+          secureTextEntry={true}
+          autoCapitalize="none"
+        />
 
-      <Button title="Log In" onPress={handleLogin} disabled={loading} />
+        <Button title="Log In" onPress={handleLogin} disabled={loading} />
 
-      <TouchableOpacity style={styles.linkContainer} onPress={handleReset}>
-        <Text style={styles.link}>Forgot password?</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.linkContainer} onPress={handleReset}>
+          <Text style={styles.link}>Forgot password?</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.linkContainer}
-        onPress={() => navigation.navigate("SignUp")} // Adjust as needed
-      >
-        <Text>
-          Need an account? <Text style={styles.link}>Sign Up</Text>
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.linkContainer}
+          onPress={() => navigation.navigate("SignUp")}
+        >
+          <Text>
+            Need an account? <Text style={styles.link}>Sign Up</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -102,23 +104,20 @@ const SignInScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    justifyContent: "center",
   },
   label: {
     fontSize: 16,
     marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 15,
-    marginBottom: 15,
-  },
+
   linkContainer: {
     marginTop: 15,
     alignItems: "center",
+  },
+  innerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20, // optional: add some horizontal padding if needed
   },
   link: {
     color: "#007BFF",
@@ -130,6 +129,14 @@ const styles = StyleSheet.create({
   successText: {
     color: "green",
     marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    padding: 15,
+    marginBottom: 15,
+    backgroundColor: "#FFF",
   },
 });
 

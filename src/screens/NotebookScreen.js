@@ -15,6 +15,7 @@ import { app } from "../../firebaseConfig";
 import MathView from "react-native-math-view";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
+import { EXPO_PUBLIC_OPENAI_KEY } from "@env";
 import {
   getStorage,
   ref,
@@ -39,6 +40,15 @@ const NotebookScreen = ({ route }) => {
 
   const pickImage = async () => {
     try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "You need to grant camera permissions to use this feature."
+        );
+        return;
+      }
       let result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
@@ -162,7 +172,7 @@ const NotebookScreen = ({ route }) => {
     }
   }, [gptResponses]);
 
-  const apiKey = process.env.EXPO_PUBLIC_OPENAI_KEY;
+  const apiKey = EXPO_PUBLIC_OPENAI_KEY;
 
   async function openaiRequest(content) {
     try {
@@ -173,11 +183,11 @@ const NotebookScreen = ({ route }) => {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4",
           messages: [
             {
               role: "user",
-              content: `Elaborate and still be very brief... as brief as possible, explain definitons or math variables if relevant: ${content}`,
+              content: `Go deep on this meaning, yet be super concise: ${content}`,
             },
           ],
         }),
@@ -195,9 +205,7 @@ const NotebookScreen = ({ route }) => {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, styles.scrollViewContainer]}
-    >
+    <ScrollView style={styles.container}>
       <Text style={styles.headerText}>Class: {className}</Text>
       <Text style={styles.headerText}>Note: {noteName}</Text>
 
@@ -212,14 +220,8 @@ const NotebookScreen = ({ route }) => {
 export default NotebookScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  scrollViewContainer: {
-    marginVertical: 50, // Adjust the value as needed
-  },
+  container: { flex: 1 },
+
   text: {
     marginVertical: 5,
   },
@@ -231,22 +233,27 @@ function renderResponse(responseText, mainIndex) {
 
   let isLatexBlock = false;
   let latexContent = "";
+  let inlineGroup = []; // Group to hold adjacent inline elements
+  let keyCounter = 0; // Counter to ensure unique keys
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
+    // Reset the key counter for each line
+    keyCounter = 0;
+
     if (line.startsWith("\\[")) {
       isLatexBlock = true;
-      latexContent = line.slice(2) + "\n"; // Start collecting the LaTeX content
+      latexContent = line.slice(2) + "\n";
       continue;
     }
 
     if (line.endsWith("\\]")) {
       isLatexBlock = false;
-      latexContent += line.slice(0, -2); // End collecting the LaTeX content
+      latexContent += line.slice(0, -2);
       renderedContent.push(
         <MathView
-          key={i}
+          key={`${i}-${keyCounter++}`}
           math={latexContent}
           onError={(error) => console.warn(error)}
           onLoad={() => console.log("Loaded")}
@@ -257,24 +264,23 @@ function renderResponse(responseText, mainIndex) {
     }
 
     if (isLatexBlock) {
-      latexContent += line + "\n"; // Continue collecting the LaTeX content
+      latexContent += line + "\n";
     } else {
-      // Check for inline LaTeX
       const inlineLatexMatches = line.match(/\\\(.*?\\\)/g);
       if (inlineLatexMatches) {
         let startIndex = 0;
         for (const match of inlineLatexMatches) {
           const matchIndex = line.indexOf(match, startIndex);
           if (matchIndex > startIndex) {
-            renderedContent.push(
-              <Text key={`${i}-${startIndex}`} style={styles.text}>
+            inlineGroup.push(
+              <Text key={`${i}-${keyCounter++}`} style={styles.text}>
                 {line.substring(startIndex, matchIndex)}
               </Text>
             );
           }
-          renderedContent.push(
+          inlineGroup.push(
             <MathView
-              key={`${i}-${match}`}
+              key={`${i}-${keyCounter++}`}
               math={match.slice(2, -2)}
               onError={(error) => console.warn(error)}
               onLoad={() => console.log("Loaded")}
@@ -283,15 +289,24 @@ function renderResponse(responseText, mainIndex) {
           startIndex = matchIndex + match.length;
         }
         if (startIndex < line.length) {
-          renderedContent.push(
-            <Text key={`${i}-${startIndex}`} style={styles.text}>
+          inlineGroup.push(
+            <Text key={`${i}-${keyCounter++}`} style={styles.text}>
               {line.substring(startIndex)}
             </Text>
           );
         }
+        renderedContent.push(
+          <View
+            key={`${i}-${keyCounter++}`}
+            style={{ flexDirection: "row", flexWrap: "wrap" }}
+          >
+            {inlineGroup}
+          </View>
+        );
+        inlineGroup = [];
       } else {
         renderedContent.push(
-          <Text key={i} style={styles.text}>
+          <Text key={`${i}-${keyCounter++}`} style={styles.text}>
             {line}
           </Text>
         );

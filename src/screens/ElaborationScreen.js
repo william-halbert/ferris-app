@@ -1,9 +1,10 @@
 // ElaborationScreen.js
 
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
+import MathView from "react-native-math-view";
 
 const ElaborationScreen = () => {
   const { getNote, noteInfo } = useAuth();
@@ -42,14 +43,35 @@ const ElaborationScreen = () => {
   }, []);
 
   return (
-    <ScrollView>
-      <View>
-        {gptResponses.map((response, index) => (
-          <Text key={index}>{response}</Text>
-        ))}
-      </View>
+    <ScrollView style={{ flex: 1 }}>
+      {gptResponses.map((response, index) => (
+        <View key={index} style={styles.responseContainer}>
+          <Text style={styles.header}>Response {index + 1}</Text>
+          <Text style={styles.responseText}>{response}</Text>
+        </View>
+      ))}
     </ScrollView>
   );
 };
 
 export default ElaborationScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  responseContainer: {
+    marginVertical: 15,
+    padding: 10,
+    borderRadius: 10,
+  },
+  header: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  responseText: {
+    fontSize: 16,
+  },
+});

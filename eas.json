@@ -1,0 +1,41 @@
+{
+  "cli": {
+    "version": ">= 5.4.0",
+    "promptToConfigurePushNotifications": false
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAIUYTYz0GN5R8e9OsfWmPY480Dya7uek0",
+        "EXPO_PUBLIC_AUTH_DOMAIN": "audio-to-text-7ecf6.firebaseapp.com",
+        "EXPO_PUBLIC_PROJECT_ID": "audio-to-text-7ecf6",
+        "EXPO_PUBLIC_STORAGE_BUCKET": "audio-to-text-7ecf6.appspot.com",
+        "EXPO_PUBLIC_MESSAGING_SENDER_ID": "535371888435",
+        "EXPO_PUBLIC_APP_ID": "1:535371888435:web:c84b2c1cadce471a8ef046",
+        "EXPO_PUBLIC_MEASUREMENT_ID": "G-S6C86K9K7Q",
+        "EXPO_PUBLIC_OPENAI_KEY": "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",
+        "EXPO_PUBLIC_STRIPE_KEY": "pk_test_51Mve8FJ7QtFqMwlQ0wdT6IsUWAdFRUm6LdujP5eLxBFbCA6MOfjdAeQPXEpRwZIOhIz9wb6gO5GvzgPsoMEnd4Dy001VNCzE3A",
+        "EXPO_PUBLIC_SERVER": "http://localhost:4000",
+        "EXPO_PUBLIC_SERVER_LIVE": "https://chat-with-notes-server-b9f51be04d4f.herokuapp.com",
+        "EXPO_PUBLIC_STRIPE_KEY_LIVE": "pk_live_51Mve8FJ7QtFqMwlQzE11k2N5nIhV5tNURTvabm7tWngP8LfgFekTa5FuhKekCYmW5bux9P3eHlkWFtq36ZJPnyMU00CUp0dt6H",
+        "DANGEROUSLY_DISABLE_HOST_CHECK": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "willhalbert16@gmail.com",
+        "ascAppId": "6468369438",
+        "appleTeamId": "K63Q3R9U66"
+      }
+    }
+  }
+}

@@ -103,8 +103,6 @@ const NotesScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#F7F7F7",
   },
   title: {
     fontSize: 24,

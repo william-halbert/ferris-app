@@ -1,36 +1,39 @@
-import { config } from "dotenv";
-config(); // This will load the environment variables from .env file
-
 export default {
   expo: {
-    name: "essial",
+    name: "Ferris",
     slug: "essial",
-    version: "1.0.0",
+    version: "1.1.11",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    extra: {
-      apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.EXPO_PUBLIC_AUTH_DOMAIN,
-      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
-      storageBucket: process.env.EXPO_PUBLIC_STORAGE_BUCKET,
-      messagingSenderId: process.env.EXPO_PUBLIC_MESSAGING_SENDER_ID,
-      appId: process.env.EXPO_PUBLIC_APP_ID,
-      measurementId: process.env.EXPO_PUBLIC_MEASUREMENT_ID,
-    },
+    privacy: "unlisted",
+    owner: "willhalbert",
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff",
+      backgroundColor: "#fff4fb",
     },
     assetBundlePatterns: ["**/*"],
     ios: {
       supportsTablet: true,
     },
+    extra: {
+      eas: {
+        projectId: "d4a63a80-51a8-430b-b808-3631a643d986",
+      },
+    },
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "so.ferris.ferris",
+      infoPlist: {
+        NSCameraUsageDescription:
+          "This app requires access to the camera to take pictures of to create notes from those photos.",
+      },
+    },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#fff4fb",
       },
     },
     web: {

@@ -37,15 +37,11 @@ const SignUpScreen = ({ navigation }) => {
       if (response !== "success") {
         setError(response);
       } else {
-        setSuccess(
-          "You're signed up! Check your email for a verification link."
-        );
+        setSuccess("You're signed up!");
         await handleLogin();
         navigation.navigate("Library");
       }
-    } catch (err) {
-      setError("Failed to set up an account.");
-    }
+    } catch (err) {}
   };
 
   async function handleLogin() {
@@ -76,60 +72,64 @@ const SignUpScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create an Account</Text>
+      <View style={styles.innerContainer}>
+        <Text style={styles.title}>Create an Account</Text>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
-      {success && <Text style={styles.successText}>{success}</Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
+        {success && <Text style={styles.successText}>{success}</Text>}
 
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCompleteType="email"
-      />
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCompleteType="email"
+        />
 
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Password"
-        secureTextEntry={true}
-        autoCapitalize="none"
-        autoCompleteType="password"
-      />
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Password"
+          secureTextEntry={true}
+          autoCapitalize="none"
+          autoCompleteType="password"
+        />
 
-      <TextInput
-        style={styles.input}
-        value={passwordConfirmation}
-        onChangeText={setPasswordConfirmation}
-        placeholder="Confirm Password"
-        secureTextEntry={true}
-        autoCapitalize="none"
-        autoCompleteType="password"
-      />
+        <TextInput
+          style={styles.input}
+          value={passwordConfirmation}
+          onChangeText={setPasswordConfirmation}
+          placeholder="Confirm Password"
+          secureTextEntry={true}
+          autoCapitalize="none"
+          autoCompleteType="password"
+        />
 
-      <View style={styles.termsContainer}>
-        {renderCheckbox(confirmedTerms, () =>
-          setConfirmedTerms(!confirmedTerms)
-        )}
-        <Text>I have read and accept the </Text>
-        <TouchableOpacity
-          onPress={() => {
-            /* navigate to terms and conditions */
-          }}
-        >
-          <Text style={styles.link}>terms and conditions</Text>
+        <View style={styles.termsContainer}>
+          {renderCheckbox(confirmedTerms, () =>
+            setConfirmedTerms(!confirmedTerms)
+          )}
+          <Text style={styles.termsText}>I have read and accept the </Text>
+          <TouchableOpacity
+            onPress={() => {
+              /* navigate to terms and conditions */
+            }}
+          >
+            <Text style={[styles.termsText, styles.link]}>
+              terms and conditions
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Button title="Sign Up" onPress={handleSignUp} />
+
+        <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
+          <Text style={styles.link}>Already have an account? Sign In</Text>
         </TouchableOpacity>
       </View>
-
-      <Button title="Sign Up" onPress={handleSignUp} />
-
-      <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
-        <Text style={styles.link}>Already have an account? Sign In</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -137,9 +137,6 @@ const SignUpScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    justifyContent: "center",
-    backgroundColor: "#F7F7F7",
   },
   title: {
     fontSize: 24,
@@ -156,9 +153,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
   },
   link: {
-    marginTop: 15,
+    marginTop: 0,
     textAlign: "center",
     color: "#007BFF",
+  },
+  innerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20, // optional: add some horizontal padding if needed
   },
   termsContainer: {
     flexDirection: "row",
@@ -181,6 +183,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
+    backgroundColor: "white",
   },
   checkboxChecked: {
     backgroundColor: "#007BFF",

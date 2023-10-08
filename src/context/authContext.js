@@ -208,6 +208,7 @@ export function AuthProvider({ children }) {
       console.error("Error saving conversation to Firestore: ", error);
     }
   }
+
   async function saveGptResponse(uid, className, noteTitle, responses) {
     try {
       await setDoc(

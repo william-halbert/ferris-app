@@ -3,6 +3,15 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthProvider } from "./src/context/authContext";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 
 import ElaborationScreen from "./src/screens/ElaborationScreen";
 import SignInScreen from "./src/screens/SignInScreen";
@@ -17,19 +26,21 @@ const Tab = createMaterialTopTabNavigator();
 const App = () => {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="SignIn">
-          <Stack.Screen name="SignIn" component={SignInScreen} />
-          <Stack.Screen name="Notes" component={NotesScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Library" component={LibraryScreen} />
-          <Stack.Screen
-            name="Tabs"
-            component={TabNavigator}
-            options={{ headerShown: true }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <View style={{ flex: 1 }}>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="SignIn">
+            <Stack.Screen name="SignIn" component={SignInScreen} />
+            <Stack.Screen name="Notes" component={NotesScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="Library" component={LibraryScreen} />
+            <Stack.Screen
+              name="Tabs"
+              component={TabNavigator}
+              options={{ headerShown: true }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
     </AuthProvider>
   );
 };
