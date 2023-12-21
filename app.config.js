@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "Ferris",
     slug: "essial",
-    version: "1.1.11",
+    version: "1.1.115",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

@@ -7,7 +7,8 @@ import {
   initializeAuth,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage"; //
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+
 import {
   EXPO_PUBLIC_FIREBASE_API_KEY,
   EXPO_PUBLIC_AUTH_DOMAIN,
@@ -33,15 +34,3 @@ const auth = initializeAuth(app, {
 });
 //const auth = getAuth(app);
 export { db, auth, app };
-
-/*
-const app = initializeApp({
-  apiKey: "AIzaSyAIUYTYz0GN5R8e9OsfWmPY480Dya7uek0",
-  authDomain: "audio-to-text-7ecf6.firebaseapp.com",
-  projectId: "audio-to-text-7ecf6",
-  storageBucket: "audio-to-text-7ecf6.appspot.com",
-  messagingSenderId: "535371888435",
-  appId: "1:535371888435:web:c84b2c1cadce471a8ef046",
-  measurementId: "G-S6C86K9K7Q",
-});
-*/

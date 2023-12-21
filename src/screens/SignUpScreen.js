@@ -18,7 +18,7 @@ const SignUpScreen = ({ navigation }) => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const { signup } = useAuth();
+  const { signup, login, setLoading } = useAuth();
 
   const handleSignUp = async () => {
     if (!confirmedTerms) {
@@ -39,7 +39,6 @@ const SignUpScreen = ({ navigation }) => {
       } else {
         setSuccess("You're signed up!");
         await handleLogin();
-        navigation.navigate("Library");
       }
     } catch (err) {}
   };

@@ -8,7 +8,13 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+//import * as ImageManipulator from "expo-image-manipulator";
+//import ImagePicker from "react-native-image-crop-picker";
+import Gradient from "../../assets/gradient.png";
+import Camera from "../../assets/camera.png";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { app } from "../../firebaseConfig";
@@ -50,9 +56,8 @@ const NotebookScreen = ({ route }) => {
         return;
       }
       let result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.3,
+        allowsEditing: false,
+        quality: 0.1,
       });
       if (!result.canceled) {
         setImage(result.assets[0].uri);
@@ -152,6 +157,7 @@ const NotebookScreen = ({ route }) => {
 
       if (data.text) {
         setResponseTexts((prevTexts) => [...prevTexts, data.text]); // <-- push to the array
+
         openaiRequest(data.text);
       }
     } catch (error) {
@@ -187,7 +193,7 @@ const NotebookScreen = ({ route }) => {
           messages: [
             {
               role: "user",
-              content: `Go deep on this meaning, yet be super concise: ${content}`,
+              content: `Create 1 multiple choice question with two options and the correct answer as "a" or "b". Properly escape the JSON strings with double backslashes. Respond in an  objects {"question": , "options":[], "correctAnswer": }: ${content}`,
             },
           ],
         }),
@@ -199,31 +205,65 @@ const NotebookScreen = ({ route }) => {
         ...prevTexts,
         data.choices[0].message.content,
       ]);
+      console.log(data.choices[0].message.content);
     } catch (e) {
       console.log("Error:", e.message, e);
     }
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.headerText}>Class: {className}</Text>
-      <Text style={styles.headerText}>Note: {noteName}</Text>
-
-      <Button title="Take a picture" onPress={pickImage} />
-
-      {uploading && <ActivityIndicator />}
-      {responseTexts.map((text, index) => renderResponse(text, index))}
-    </ScrollView>
+    <View style={styles.mainContainer}>
+      <LinearGradient
+        colors={["rgba(255,105,180,1)", "rgba(255,0,0,1)"]}
+        start={[0.707, 0.707]}
+        end={[0.293, 0.293]}
+        style={styles.gradient}
+      >
+        <TouchableOpacity style={styles.cameraButton} onPress={pickImage}>
+          <Image source={Camera} style={styles.cameraImage} />
+        </TouchableOpacity>
+      </LinearGradient>
+      <ScrollView style={styles.container}>
+        {uploading && <ActivityIndicator />}
+        {responseTexts.map((text, index) => renderResponse(text, index))}
+      </ScrollView>
+    </View>
   );
 };
 
 export default NotebookScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
+  container: { flex: 1, paddingHorizontal: 15, paddingVertical: 15 },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: "#FFFAFD",
+  },
   text: {
-    marginVertical: 5,
+    marginVertical: 12,
+    fontSize: 18,
+  },
+  cameraButton: {
+    zIndex: 1,
+  },
+  gradient: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    zIndex: 1,
+  },
+  cameraText: {
+    fontSize: 24,
+  },
+  cameraImage: {
+    width: 40, // Adjust as necessary
+    height: 40, // Adjust as necessary
+    resizeMode: "contain", // Ensures the image scales correctly
   },
 });
 
@@ -318,3 +358,29 @@ function renderResponse(responseText, mainIndex) {
     React.cloneElement(content, { key: `${mainIndex}-${subIndex}` })
   );
 }
+
+/*
+const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "You need to grant camera permissions to use this feature."
+        );
+        return;
+      }
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.3,
+      });
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
+        uploadImageToFirebase(result.assets[0].uri);
+      }
+    } catch (E) {
+      console.log(E);
+    }
+  };
+  */

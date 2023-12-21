@@ -7,7 +7,10 @@ import {
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
+
 import {
   setDoc,
   Timestamp,
@@ -24,6 +27,9 @@ import {
   uploadString,
   getDownloadURL,
 } from "firebase/storage";
+import auth from "@react-native-firebase/auth";
+import * as GoogleSignIn from "expo-google-sign-in";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 
 import { db } from "../../firebaseConfig";
 
@@ -70,9 +76,6 @@ export function AuthProvider({ children }) {
       );
       if (user) {
         await createUser(user.uid, email);
-        await sendEmailVerification(user).then(
-          console.log("sent email verification")
-        );
       }
     } catch (err) {
       return err.message;
@@ -91,6 +94,7 @@ export function AuthProvider({ children }) {
 
     return "success";
   }
+
   async function verifyEmail(user) {
     try {
       await sendEmailVerification(user).then(
@@ -368,14 +372,13 @@ export function AuthProvider({ children }) {
       console.error(e);
     }
   }
-  async function createUser(uid, email) {
+  async function createUser(uid, email, name, photoUrl) {
     const docData = {
       userId: String(uid),
       createdDate: Timestamp.fromDate(new Date()),
-      plan: "FreeTrial",
-      minutesRemaing: 720,
-      credits: 0,
       email: email,
+      name: name, // Storing the user's name
+      photoUrl: photoUrl, // Storing the user's photo URL
     };
     try {
       const docRef = await setDoc(doc(db, "users", String(uid)), docData);
@@ -383,6 +386,7 @@ export function AuthProvider({ children }) {
       console.error(e);
     }
   }
+
   function readUser(uid) {}
 
   function readChat(uid, chatId, folderId) {}
@@ -502,6 +506,45 @@ export function AuthProvider({ children }) {
     return notes;
   }
 
+  async function signInWithGoogle() {
+    try {
+      await GoogleSignIn.initAsync(); // You might need to configure this with your client ID
+      await GoogleSignIn.askForPlayServicesAsync();
+      const { type, user } = await GoogleSignIn.signInAsync();
+
+      if (type === "success") {
+        const { idToken, accessToken } = user.auth;
+        const credential = GoogleAuthProvider.credential(idToken, accessToken);
+
+        // Authenticate with Firebase using the Google credential
+        const result = await signInWithCredential(auth, credential);
+        const firebaseUser = result.user;
+
+        setCurrentUser(firebaseUser);
+
+        const user = firebaseUser;
+        const name = user.displayName;
+        const photoUrl = user.photoURL;
+
+        // Check if the user is new or existing
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        // If user does not exist, create a new user record
+        if (!docSnap.exists()) {
+          await createUser(user.uid, user.email, name, photoUrl);
+        }
+        return { success: true };
+      } else {
+        return { success: false, errorMessage: "Google Sign-In was cancelled" };
+      }
+    } catch (error) {
+      console.error(error);
+      setAuthError(error.message); // Set authentication error
+      return { success: false, errorMessage: error.message };
+    }
+  }
+
   const value = {
     loading,
     authError,
@@ -537,6 +580,7 @@ export function AuthProvider({ children }) {
     saveGptResponse,
     noteInfo,
     setNoteInfo,
+    signInWithGoogle,
   };
 
   return (
