@@ -25,7 +25,7 @@ const SignInScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (auth.currentUser) {
-      navigation.navigate("Library");
+      navigation.navigate("Notebooks");
     }
   }, [auth.currentUser]);
 
@@ -36,7 +36,7 @@ const SignInScreen = ({ navigation }) => {
       const response = await signInWithGoogle();
       setLoading(false);
       if (response === "success") {
-        navigation.navigate("Library");
+        navigation.navigate("Notebooks");
       } else {
         setError(response);
       }
@@ -107,22 +107,27 @@ const SignInScreen = ({ navigation }) => {
     setSuccess("");
     setError("");
     setLoading(true);
+    console.log("Email: ", email, "Password: ", password);
 
     try {
-      const signUpResponse = await handleSignUp(); // Assume handleSignUp returns a response
-      if (signUpResponse !== "success") {
-        setError(signUpResponse);
-      } else {
-        const loginResponse = await handleLogin(); // Assume handleLogin returns a response
-        if (loginResponse === "success") {
-          navigation.navigate("Library");
-        } else {
-          setError(loginResponse);
+      handleSignUp();
+      console.log("signed up");
+      setTimeout(async () => {
+        try {
+          await handleLogin();
+          console.log("logged in");
+        } catch (loginError) {
+          console.log("loginError", loginError);
         }
-      }
+      }, 1000);
     } catch (error) {
-      setError("An error occurred during the sign-up/login process.");
-      console.log("Error:", error);
+      console.log("signUpError", signUpError);
+      try {
+        handleLogin();
+        console.log("logged in");
+      } catch (loginError) {
+        console.log("loginError", loginError);
+      }
     } finally {
       setLoading(false);
     }

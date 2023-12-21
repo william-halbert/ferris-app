@@ -27,6 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>ferris</string>
           <string>so.ferris.ferris</string>
         </array>
       </dict>

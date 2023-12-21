@@ -7,7 +7,10 @@ import {
   initializeAuth,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  ReactNativeAsyncStorage,
+  AsyncStorage,
+} from "@react-native-async-storage/async-storage";
 
 import {
   EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -28,9 +31,9 @@ const app = initializeApp({
   appId: EXPO_PUBLIC_APP_ID,
   measurementId: EXPO_PUBLIC_MEASUREMENT_ID,
 });
+
 const db = getFirestore(app);
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(ReactNativeAsyncStorage),
 });
-//const auth = getAuth(app);
-export { db, auth, app };
+export { db };

@@ -6,6 +6,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
+    scheme: "ferris",
     privacy: "unlisted",
     owner: "willhalbert",
     splash: {

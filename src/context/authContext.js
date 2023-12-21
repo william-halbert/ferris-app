@@ -27,11 +27,12 @@ import {
   uploadString,
   getDownloadURL,
 } from "firebase/storage";
-import auth from "@react-native-firebase/auth";
-import * as GoogleSignIn from "expo-google-sign-in";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { signInWithCredential } from "firebase/auth";
 
 import { db } from "../../firebaseConfig";
+import * as AuthSession from "expo-auth-session";
+import * as Crypto from "expo-crypto";
+import { encode as btoa } from "base-64";
 
 const AuthContext = React.createContext();
 
@@ -45,6 +46,10 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState("");
   const storage = getStorage();
   const [noteInfo, setNoteInfo] = useState({ className: "", noteName: "" });
+
+  const GOOGLE_CLIENT_ID =
+    "904136774468-a75bsq0qoktsqgp6ve1tad2tokf0l0ge.apps.googleusercontent.com";
+  const REDIRECT_URI = AuthSession.makeRedirectUri({ useProxy: true });
 
   const auth = getAuth();
 
@@ -89,8 +94,10 @@ export function AuthProvider({ children }) {
         setCurrentUser(user);
       });
     } catch (err) {
+      console.log(err);
       return err.message;
     }
+    console.log("success");
 
     return "success";
   }
@@ -103,7 +110,6 @@ export function AuthProvider({ children }) {
     } catch (err) {
       return err.message;
     }
-
     return "success";
   }
 
@@ -506,43 +512,12 @@ export function AuthProvider({ children }) {
     return notes;
   }
 
-  async function signInWithGoogle() {
-    try {
-      await GoogleSignIn.initAsync(); // You might need to configure this with your client ID
-      await GoogleSignIn.askForPlayServicesAsync();
-      const { type, user } = await GoogleSignIn.signInAsync();
-
-      if (type === "success") {
-        const { idToken, accessToken } = user.auth;
-        const credential = GoogleAuthProvider.credential(idToken, accessToken);
-
-        // Authenticate with Firebase using the Google credential
-        const result = await signInWithCredential(auth, credential);
-        const firebaseUser = result.user;
-
-        setCurrentUser(firebaseUser);
-
-        const user = firebaseUser;
-        const name = user.displayName;
-        const photoUrl = user.photoURL;
-
-        // Check if the user is new or existing
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        // If user does not exist, create a new user record
-        if (!docSnap.exists()) {
-          await createUser(user.uid, user.email, name, photoUrl);
-        }
-        return { success: true };
-      } else {
-        return { success: false, errorMessage: "Google Sign-In was cancelled" };
-      }
-    } catch (error) {
-      console.error(error);
-      setAuthError(error.message); // Set authentication error
-      return { success: false, errorMessage: error.message };
-    }
+  async function generateRandomBytes(length) {
+    const randomBytes = await Crypto.getRandomBytesAsync(length);
+    return btoa(String.fromCharCode.apply(null, randomBytes));
+  }
+  function signInWithGoogle() {
+    console.log("hi");
   }
 
   const value = {
