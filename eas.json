@@ -6,8 +6,24 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyActP8g8Ce9L2Lnbvn5gse0zki7hm0u9Zg",
+        "EXPO_PUBLIC_AUTH_DOMAIN": "ferrisnotes.firebaseapp.com",
+        "EXPO_PUBLIC_PROJECT_ID": "ferrisnotes",
+        "EXPO_PUBLIC_STORAGE_BUCKET": "ferrisnotes.appspot.com",
+        "EXPO_PUBLIC_MESSAGING_SENDER_ID": "904136774468",
+        "EXPO_PUBLIC_APP_ID": "1:904136774468:web:a529c17f77ce22fb2d7d11",
+        "EXPO_PUBLIC_MEASUREMENT_ID": "G-NEX5V6TCHS",
+        "EXPO_PUBLIC_OPENAI_KEY": "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",
+        "EXPO_PUBLIC_STRIPE_KEY": "pk_test_51Mve8FJ7QtFqMwlQ0wdT6IsUWAdFRUm6LdujP5eLxBFbCA6MOfjdAeQPXEpRwZIOhIz9wb6gO5GvzgPsoMEnd4Dy001VNCzE3A",
+        "EXPO_PUBLIC_SERVER": "http://localhost:4000",
+        "EXPO_PUBLIC_SERVER_LIVE": "https://chat-with-notes-server-b9f51be04d4f.herokuapp.com",
+        "EXPO_PUBLIC_STRIPE_KEY_LIVE": "pk_live_51Mve8FJ7QtFqMwlQzE11k2N5nIhV5tNURTvabm7tWngP8LfgFekTa5FuhKekCYmW5bux9P3eHlkWFtq36ZJPnyMU00CUp0dt6H",
+        "DANGEROUSLY_DISABLE_HOST_CHECK": "true"
+      }
     },
+
     "preview": {
       "distribution": "internal"
     },

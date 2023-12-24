@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useRoute } from "@react-navigation/native";
 import {
   View,
   ScrollView,
@@ -18,14 +19,17 @@ import { Keyboard } from "react-native";
 import { PanResponder } from "react-native";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
-import ListOfLectures from "./listOfLectures";
 // Image assets
 const Spiral = require("../../assets/spiral.png");
 const BackpackImg = require("../../assets/unzippedBackpackBlue.png");
 const ClosedBackpack = require("../../assets/backpackBlue.png");
+import uuid from "react-native-uuid";
 
 // Main screen component that renders notebooks in a grid
-const ListOfNotebooks = ({ navigation }) => {
+const ListOfLectures = ({ navigation }) => {
+  const route = useRoute();
+  const { notebook } = route.params;
+  const thisNotebook = notebook;
   const [openNotebook, setOpenNotebook] = useState(null);
   const [notebooks, setNotebooks] = useState([]);
   const [isDeleteSheetVisible, setIsDeleteSheetVisible] = useState(false);
@@ -33,24 +37,39 @@ const ListOfNotebooks = ({ navigation }) => {
   const [newNotebookName, setNewNotebookName] = useState("");
 
   const auth = getAuth();
-  const { createClass, getAllClassNames, deleteNotebook, editNotebookName } =
-    useAuth();
+  const {
+    createClass,
+    getAllClassNames,
+    deleteNotebook,
+    editNotebookName,
+    editLectureName,
+    createLecture,
+    getAllLectureNames,
+    deleteLecture,
+  } = useAuth();
+
   const user = auth.currentUser;
 
   useEffect(() => {
     async function fetchClasses() {
       if (user) {
         try {
-          const userClasses = await getAllClassNames(user.uid);
+          const userClasses = await getAllLectureNames(
+            user.uid,
+            notebook.classId
+          );
           console.log("Fetched classes:", userClasses);
           if (userClasses && Array.isArray(userClasses)) {
             // Filter to only include "live" notebooks and prepend the "Add New" notebook
             const liveNotebooks = userClasses
               .filter((c) => c.status === "live") // Filter for live notebooks
-              .map((c) => ({
-                name: c.className,
-                status: c.status,
-                classId: c.classId,
+              .map((l) => ({
+                lectureName: l.lectureName,
+                status: l.status,
+                lectureId: l.lectureId,
+                abbrevDate: l.abbrevDate,
+                className: l.className,
+                classId: l.classId,
               }));
 
             setNotebooks([...liveNotebooks]);
@@ -68,9 +87,7 @@ const ListOfNotebooks = ({ navigation }) => {
     fetchClasses();
   }, [user, getAllClassNames]);
 
-  const onNotebookPress = (notebook) => {
-    navigation.navigate("ListOfLectures", { notebook });
-  };
+  const onNotebookPress = (notebook) => {};
 
   const [renameSheetVisible, setRenameSheetVisible] = useState(false);
   const [currentNotebookName, setCurrentNotebookName] = useState("");
@@ -230,19 +247,42 @@ const ListOfNotebooks = ({ navigation }) => {
     });
   };
 
+  const getAbbreviatedDate = () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().substr(-2);
+    const month = now.toLocaleString("default", { month: "short" });
+    const day = now.getDate();
+
+    return `${month} ${day}, '${year}`;
+  };
+
   const addNotebook = async () => {
     console.log("handleCreateClass called with:", newNotebookName); // Debugging output
 
     if (newNotebookName) {
       // Ensure we are using the correct state variable
       try {
-        await createClass(String(user.uid), newNotebookName); // Create class
-        console.log("Class created successfully"); // Debugging output
+        const lectureId = uuid.v4();
+        const abbrevDate = getAbbreviatedDate();
+        const newLecture = {
+          lectureName: newNotebookName,
+          status: "live",
+          lectureId: lectureId,
+          abbrevDate: abbrevDate,
+          className: notebook.name,
+          lectureId,
+        };
+        await createLecture(
+          String(user.uid),
+          String(thisNotebook.classId),
+          thisNotebook.name,
+          newNotebookName,
+          abbrevDate,
+          lectureId
+        );
+        console.log("Lecture created successfully"); // Debugging output
 
-        setNotebooks((prevClasses) => [
-          ...prevClasses,
-          { name: newNotebookName },
-        ]);
+        setNotebooks((prevClasses) => [...prevClasses, newLecture]);
         setNewNotebookName("");
         hideBottomSheet();
       } catch (error) {
@@ -255,24 +295,24 @@ const ListOfNotebooks = ({ navigation }) => {
   };
 
   const handleGoBack = () => {
-    console.log("handleGoBack called");
-
+    navigation.navigate("Notebooks");
     setOpenNotebook(null);
   };
 
   const fullWidth = Dimensions.get("window").width;
-  const calcPaddingLeft = (fullWidth - 290) / 2;
+  const calcPaddingLeft = (fullWidth - 335) / 2;
 
   const contentContainerStyles = new StyleSheet.create({
     contentContainer: {
       paddingTop: 20,
       marginTop: 0, // Make room for the backpack image
       paddingBottom: 90,
+      paddingHorizontal: 12,
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "start",
       alignItems: "center",
-      gap: 40,
+      gap: 15,
       paddingLeft: calcPaddingLeft,
     },
   });
@@ -292,50 +332,35 @@ const ListOfNotebooks = ({ navigation }) => {
         >
           <Image source={BackpackImg} style={styles.backpack} />
         </TouchableOpacity>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-          }}
+        <ScrollView
+          contentContainerStyle={[contentContainerStyles.contentContainer]}
         >
-          <ScrollView
-            contentContainerStyle={[contentContainerStyles.contentContainer]}
-          >
-            {!openNotebook && (
-              <View style={[styles.notebook, { backgroundColor: "white" }]}>
-                <TouchableOpacity
-                  onPress={addNewNotebook}
-                  style={styles.notebookTouchable}
-                >
-                  <View style={styles.newNotebookContent}>
-                    <Text style={styles.plusIcon}>+</Text>
-                    <Text style={styles.newNotebookText}>New Notebook</Text>
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.spiralMask}>
-                  <Image source={Spiral} style={styles.spiral} />
-                </View>
-              </View>
-            )}
-            {openNotebook ? (
-              <ListOfLectures notebook={openNotebook} />
-            ) : (
-              notebooks.map((notebook, index) => (
-                <Notebook
-                  key={index}
-                  title={notebook.name}
-                  classId={notebook.classId}
-                  onPress={() => onNotebookPress(notebook)}
-                  onRenamePress={() => handleRenamePress(notebook)}
-                  onDeletePress={() => handleDeletePress(notebook)}
-                  backgroundColor={colors[index % colors.length]}
-                />
-              ))
-            )}
-          </ScrollView>
-        </View>
+          {!openNotebook && (
+            <TouchableOpacity
+              style={styles.newLectureButton}
+              onPress={addNewNotebook}
+            >
+              <Text style={styles.plusIcon}>+</Text>
+              <Text style={styles.newLectureText}>New Lecture</Text>
+            </TouchableOpacity>
+          )}
+          {openNotebook ? (
+            <Text></Text>
+          ) : (
+            notebooks.map((notebook, index) => (
+              <Lecture
+                key={index}
+                title={notebook.lectureName}
+                classId={notebook.lectureId}
+                onPress={() => onNotebookPress(notebook)}
+                onRenamePress={() => handleRenamePress(notebook)}
+                onDeletePress={() => handleDeletePress(notebook)}
+                backgroundColor={colors[index % colors.length]}
+                abbrevDate={notebook.abbrevDate}
+              />
+            ))
+          )}
+        </ScrollView>
         <Footer navigation={navigation} />
       </View>
       {isBottomSheetVisible && (
@@ -366,12 +391,12 @@ const ListOfNotebooks = ({ navigation }) => {
         >
           <TextInput
             style={styles.input}
-            placeholder="Enter notebook name"
+            placeholder="Enter lecture name"
             value={newNotebookName}
             onChangeText={setNewNotebookName}
           />
           <TouchableOpacity onPress={addNotebook} style={styles.addButton}>
-            <Text style={styles.buttonText}>Add Notebook</Text>
+            <Text style={styles.buttonText}>Add Lecture</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -431,6 +456,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    flexDirection: "column",
+    justifyContent: "center",
   },
   backpack: {
     position: "absolute",
@@ -446,7 +473,7 @@ const styles = StyleSheet.create({
     width: 120, // Approximate width for 2 columns
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 0,
+    marginVertical: 5,
     borderWidth: 1,
     borderColor: "black",
     position: "relative",
@@ -534,12 +561,7 @@ const styles = StyleSheet.create({
     marginBottom: 16, // Margin at the bottom
     backgroundColor: "#FFF", // White background color
   },
-  menuIcon: {
-    position: "absolute",
-    top: 10,
-    right: 4,
-    zIndex: 2, // Ensure the icon is above other elements
-  },
+
   popup: {
     position: "absolute",
     backgroundColor: "white",
@@ -588,9 +610,65 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+  newLectureButton: {
+    textAlign: "center",
+    width: 160, // Approximately two items per row
+    height: 80,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 0,
+    borderRadius: 8,
+    backgroundColor: "#ffffff", // Assuming a white background for the button
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5, // for Android
+    marginBottom: 10,
+  },
+  lectureItem: {
+    width: 160, // Approximately two items per row
+    height: 80,
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    borderRadius: 8,
+    margin: 0,
+    marginBottom: 0,
+    position: "relative", // Added to position children absolutely
+  },
+  lectureDate: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  lectureName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 24, // Adjusted to prevent overlap with the ellipsis icon
+  },
+  lectureNameDiv: {
+    lectureNameDiv: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      margin: 0,
+    },
+  },
+  lectureClick: {
+    width: 160, // Approximately two items per row
+    height: 80,
+  },
+  menuIcon: {
+    position: "absolute",
+    bottom: 28,
+    right: 2,
+  },
 });
 
-export default ListOfNotebooks;
+export default ListOfLectures;
 
 const RenameBottomSheet = ({
   isVisible,
@@ -660,7 +738,7 @@ const RenameBottomSheet = ({
     >
       <TextInput
         style={styles.input}
-        placeholder="New notebook name"
+        placeholder="New lecture name"
         value={newName}
         onChangeText={setNewName}
       />
@@ -711,7 +789,7 @@ const DeleteBottomSheet = ({
       style={[styles.deleteBottomSheet, { transform: [{ translateY }] }]}
     >
       <Text style={styles.deleteText}>
-        Are you sure you want to delete this notebook?
+        Are you sure you want to delete this lecture?
       </Text>
       <TouchableOpacity onPress={handleDeleteConfirm} style={styles.addButton}>
         <Text style={styles.buttonText}>Delete</Text>
@@ -721,13 +799,14 @@ const DeleteBottomSheet = ({
 };
 
 // Define a single Notebook component
-const Notebook = ({
-  style,
+const Lecture = ({
   title,
   onPress,
   backgroundColor,
   onRenamePress,
   onDeletePress,
+  classId,
+  abbrevDate,
 }) => {
   const [clicked, setClicked] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
@@ -744,6 +823,7 @@ const Notebook = ({
   const closePopup = () => {
     setPopupVisible(false);
   };
+
   const handleMenuPress = (event) => {
     // Prevent event from bubbling up
     event.stopPropagation();
@@ -754,15 +834,15 @@ const Notebook = ({
 
     // Position of the menu icon within the notebook
     const menuIconX = styles.menuIcon.right;
-    const menuIconY = styles.menuIcon.top;
+    const menuIconY = styles.menuIcon.bottom;
 
     // Dimensions of the notebook
-    const notebookWidth = styles.notebook.width;
-    const notebookHeight = styles.notebook.height;
+    const notebookWidth = styles.lectureItem.width;
+    const notebookHeight = styles.lectureItem.height;
 
     // Calculate the position for the popup
-    const adjustedX = notebookWidth - menuIconX - popupWidth / 2 + 10;
-    const adjustedY = menuIconY + notebookHeight / 2 - popupHeight + 10;
+    const adjustedX = notebookWidth - menuIconX - popupWidth / 2 - 10;
+    const adjustedY = menuIconY + notebookHeight / 2 - popupHeight + 50;
 
     // Set the position state
     setPopupPosition({ x: adjustedX, y: adjustedY });
@@ -780,27 +860,20 @@ const Notebook = ({
   };
 
   return (
-    <View style={[styles.notebook, { backgroundColor }]}>
-      <TouchableOpacity onPress={onPress} style={styles.notebookTouchable}>
-        <Text style={styles.notebookText}>{title}</Text>
-      </TouchableOpacity>
-
+    <View key={classId} style={styles.lectureItem}>
+      <Text style={styles.lectureDate}>{abbrevDate}</Text>
+      <Text style={styles.lectureName} numberOfLines={2}>
+        {title}
+      </Text>
       <TouchableOpacity style={styles.menuIcon} onPress={handleMenuPress}>
         <Ionicons name="ellipsis-vertical" size={24} color="black" />
       </TouchableOpacity>
-      {popupVisible && (
-        <Overlay isVisible={popupVisible} onPress={closePopup} />
-      )}
       <Popup
         isVisible={popupVisible}
         position={popupPosition}
         onRename={handleRename}
         onDelete={handleDelete}
       />
-
-      <View style={styles.spiralMask}>
-        <Image source={Spiral} style={styles.spiral} />
-      </View>
     </View>
   );
 };

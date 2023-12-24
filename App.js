@@ -21,6 +21,7 @@ import LibraryScreen from "./src/screens/LibraryScreen";
 import NotebookScreen from "./src/screens/NotebookScreen";
 import ListOfNotebooks from "./src/screens/listOfNotebooks";
 import NotesScreen from "./src/screens/notesScreen";
+import ListOfLectures from "./src/screens/listOfLectures";
 
 const Stack = createStackNavigator();
 const Tab = createMaterialTopTabNavigator();
@@ -70,6 +71,15 @@ const App = () => {
               component={ListOfNotebooks}
               options={({ route }) => ({
                 headerShown: false,
+                animationEnabled: false,
+              })}
+            />
+            <Stack.Screen
+              name="ListOfLectures"
+              component={ListOfLectures}
+              options={({ route }) => ({
+                headerShown: false,
+                animationEnabled: false,
               })}
             />
             {/*

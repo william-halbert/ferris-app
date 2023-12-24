@@ -48,6 +48,8 @@ const SignInScreen = ({ navigation }) => {
 
   const handleEmailContinue = () => {
     setAuthStep("email");
+    setSuccess("");
+    setError("");
   };
 
   const handleBack = () => {
@@ -62,8 +64,8 @@ const SignInScreen = ({ navigation }) => {
       if (response != "success") {
         return setError(response);
       } else {
-        navigate("/");
         setSuccess("You're logged in!");
+        navigation.navigate("Notebooks");
       }
     } catch (err) {
       console.log(err);
@@ -178,6 +180,8 @@ const SignInScreen = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Continue with email</Text>
       </View>
+      {success ? <Text style={styles.successText}>{success}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <Text style={styles.label}>Email (personal or work)</Text>
       <TextInput
         style={styles.input}
@@ -202,6 +206,9 @@ const SignInScreen = ({ navigation }) => {
         disabled={loading}
       >
         <Text style={styles.buttonText}>Continue</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleReset} disabled={loading}>
+        <Text style={styles.forgotPasswordText}>Forgot Password</Text>
       </TouchableOpacity>
     </View>
   );
@@ -345,6 +352,12 @@ const styles = StyleSheet.create({
     color: "red",
     marginBottom: 10,
     textAlign: "center",
+  },
+  forgotPasswordText: {
+    color: "#007BFF", // Set the color to blue
+    textDecorationLine: "underline", // Optional: to keep the underline
+    textAlign: "center",
+    textDecorationLine: "none",
   },
 });
 

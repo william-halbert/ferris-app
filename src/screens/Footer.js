@@ -11,9 +11,15 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 const ClosedBackpack = require("../../assets/backpackBlue.png");
 
-const Footer = () => (
+const Footer = ({ navigation }) => (
   <View style={styles.bottomNavigation}>
-    <Image source={ClosedBackpack} style={styles.ClosedBackpack} />
+    <TouchableOpacity
+      onPress={() => {
+        navigation.navigate("Notebooks");
+      }}
+    >
+      <Image source={ClosedBackpack} style={styles.ClosedBackpack} />
+    </TouchableOpacity>
     <Ionicons name="ios-create" size={36} color="#004DA2" />
   </View>
 );

@@ -28,10 +28,10 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import { signInWithCredential } from "firebase/auth";
+import uuid from "react-native-uuid";
 
 import { db } from "../../firebaseConfig";
 import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
 import { encode as btoa } from "base-64";
 
 const AuthContext = React.createContext();
@@ -46,10 +46,6 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState("");
   const storage = getStorage();
   const [noteInfo, setNoteInfo] = useState({ className: "", noteName: "" });
-
-  const GOOGLE_CLIENT_ID =
-    "904136774468-a75bsq0qoktsqgp6ve1tad2tokf0l0ge.apps.googleusercontent.com";
-  const REDIRECT_URI = AuthSession.makeRedirectUri({ useProxy: true });
 
   const auth = getAuth();
 
@@ -80,7 +76,7 @@ export function AuthProvider({ children }) {
         password
       );
       if (user) {
-        await createUser(user.uid, email);
+        await createUser(user.uid, email, "no_name", "no_photo");
       }
     } catch (err) {
       return err.message;
@@ -414,22 +410,6 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  async function createClass(uid, className) {
-    const docData = {
-      userId: String(uid),
-      className: className,
-      createdDate: Timestamp.fromDate(new Date()),
-    };
-    try {
-      const docRef = await setDoc(
-        doc(db, "users", uid, "classes", className),
-        docData
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   async function createNote(uid, className, noteTitle) {
     const docData = {
       userId: String(uid),
@@ -512,12 +492,149 @@ export function AuthProvider({ children }) {
     return notes;
   }
 
-  async function generateRandomBytes(length) {
-    const randomBytes = await Crypto.getRandomBytesAsync(length);
-    return btoa(String.fromCharCode.apply(null, randomBytes));
+  async function createClass(uid, className) {
+    const classId = uuid.v4();
+    const docData = {
+      userId: String(uid),
+      className: className,
+      createdDate: Timestamp.fromDate(new Date()),
+      status: "live",
+      classId: classId,
+    };
+    try {
+      const docRef = await setDoc(
+        doc(db, "users", uid, "classes", classId),
+        docData
+      );
+    } catch (e) {
+      console.error(e);
+    }
   }
-  function signInWithGoogle() {
-    console.log("hi");
+
+  async function getAllClassNames(uid) {
+    const classesRef = collection(db, "users", uid, "classes");
+    const querySnapshot = await getDocs(classesRef);
+
+    const classObjects = querySnapshot.docs.map((doc) => {
+      return {
+        className: doc.id, // className key now holds the document ID which is the class name
+        ...doc.data(), // Spreading other data that may exist in the document
+      };
+    });
+
+    return classObjects;
+  }
+
+  async function deleteNotebook(uid, classId) {
+    try {
+      await setDoc(
+        doc(db, "users", uid, "classes", classId),
+        {
+          status: "deleted",
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Error moving item to trash in Firestore: ", error);
+    }
+  }
+
+  async function editNotebookName(uid, classId, newname) {
+    try {
+      await setDoc(
+        doc(db, "users", uid, "classes", classId),
+        {
+          className: newname,
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Error saving Item Name to Firestore: ", error);
+    }
+  }
+
+  async function editLectureName(uid, classId, lectureId, newname) {
+    try {
+      await setDoc(
+        doc(db, "users", uid, "classes", classId, "lectures", lectureId),
+        {
+          lectureName: newname,
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Error saving Item Name to Firestore: ", error);
+    }
+  }
+
+  async function createLecture(
+    uid,
+    classId,
+    className,
+    lectureName,
+    abbrevDate,
+    lectureId
+  ) {
+    const docData = {
+      userId: String(uid),
+      lectureName: lectureName,
+      className: className,
+      abbrevDate: abbrevDate,
+      classId: String(classId),
+      createdDate: Timestamp.fromDate(new Date()),
+      status: "live",
+      lectureId: String(lectureId),
+    };
+    try {
+      const docRef = await setDoc(
+        doc(db, "users", uid, "classes", classId, "lectures", lectureId),
+        docData
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function getAllLectureNames(uid, classId) {
+    const classesRef = collection(
+      db,
+      "users",
+      String(uid),
+      "classes",
+      String(classId),
+      "lectures"
+    );
+    const querySnapshot = await getDocs(classesRef);
+
+    const LectureObjects = querySnapshot.docs.map((doc) => {
+      return {
+        ...doc.data(),
+      };
+    });
+
+    return LectureObjects;
+  }
+
+  async function deleteLecture(uid, classId, lectureId) {
+    try {
+      const docRef = doc(
+        db,
+        "users",
+        uid,
+        "classes",
+        classId,
+        "lectures",
+        lectureId
+      );
+
+      console.log(`Attempting to update: ${docRef.path}`);
+
+      await setDoc(docRef, { status: "deleted" }, { merge: true });
+
+      console.log("Lecture status updated to 'deleted'");
+    } catch (error) {
+      console.error("Error moving item to trash in Firestore: ", error);
+    }
   }
 
   const value = {
@@ -545,7 +662,6 @@ export function AuthProvider({ children }) {
     saveProgress,
     verifyEmail,
     uploadLectureImage,
-    createClass,
     createNote,
     getClass,
     getNote,
@@ -555,7 +671,14 @@ export function AuthProvider({ children }) {
     saveGptResponse,
     noteInfo,
     setNoteInfo,
-    signInWithGoogle,
+    createClass,
+    getAllClassNames,
+    deleteNotebook,
+    editNotebookName,
+    editLectureName,
+    createLecture,
+    getAllLectureNames,
+    deleteLecture,
   };
 
   return (
