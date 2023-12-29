@@ -1,39 +1,35 @@
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  setPersistence,
-  browserSessionPersistence,
-  getReactNativePersistence,
-  initializeAuth,
-} from "firebase/auth";
+import { getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import {
-  ReactNativeAsyncStorage,
-  AsyncStorage,
-} from "@react-native-async-storage/async-storage";
-
-import {
-  EXPO_PUBLIC_FIREBASE_API_KEY,
-  EXPO_PUBLIC_AUTH_DOMAIN,
-  EXPO_PUBLIC_PROJECT_ID,
-  EXPO_PUBLIC_STORAGE_BUCKET,
-  EXPO_PUBLIC_MESSAGING_SENDER_ID,
-  EXPO_PUBLIC_APP_ID,
-  EXPO_PUBLIC_MEASUREMENT_ID,
-} from "@env";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 const app = initializeApp({
-  apiKey: EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: EXPO_PUBLIC_AUTH_DOMAIN,
-  projectId: EXPO_PUBLIC_PROJECT_ID,
-  storageBucket: EXPO_PUBLIC_STORAGE_BUCKET,
-  messagingSenderId: EXPO_PUBLIC_MESSAGING_SENDER_ID,
-  appId: EXPO_PUBLIC_APP_ID,
-  measurementId: EXPO_PUBLIC_MEASUREMENT_ID,
+  apiKey: "AIzaSyActP8g8Ce9L2Lnbvn5gse0zki7hm0u9Zg",
+  authDomain: "ferrisnotes.firebaseapp.com",
+  projectId: "ferrisnotes",
+  storageBucket: "ferrisnotes.appspot.com",
+  messagingSenderId: "904136774468",
+  appId: "1:904136774468:web:a529c17f77ce22fb2d7d11",
+  measurementId: "G-NEX5V6TCHS",
+});
+
+const persist = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
+});
+
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // User is signed in, you can use the 'user' object for user information.
+    console.log("User is signed in:", user);
+  } else {
+    // User is signed out.
+    console.log("No user is signed in.");
+  }
 });
 
 const db = getFirestore(app);
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
-export { db };
+
+export { db, auth };

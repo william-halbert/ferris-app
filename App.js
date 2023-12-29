@@ -3,6 +3,11 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthProvider } from "./src/context/authContext";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+
 import {
   View,
   Text,
@@ -14,103 +19,190 @@ import {
 } from "react-native";
 import { useAuth } from "./src/context/authContext";
 import { getAuth } from "firebase/auth";
-import ElaborationScreen from "./src/screens/ElaborationScreen";
-import SignInScreen from "./src/screens/SignInScreen";
-import SignUpScreen from "./src/screens/SignUpScreen";
-import LibraryScreen from "./src/screens/LibraryScreen";
-import NotebookScreen from "./src/screens/NotebookScreen";
-import ListOfNotebooks from "./src/screens/listOfNotebooks";
-import NotesScreen from "./src/screens/notesScreen";
-import ListOfLectures from "./src/screens/listOfLectures";
 
-const Stack = createStackNavigator();
-const Tab = createMaterialTopTabNavigator();
+import SignInScreen from "./src/screens/SignInScreen";
+import NewLecture from "./src/screens/NewLecture";
+import ListOfNotebooks from "./src/screens/listOfNotebooks";
+import ListOfLectures from "./src/screens/listOfLectures";
+import StartScreen from "./src/screens/startScreen";
+
+const HomeStack = createStackNavigator();
+const NewLectureStack = createStackNavigator();
+const SignInStack = createStackNavigator();
 
 const App = () => {
-  const auth = getAuth();
-  const [initialRoute, setInitialRoute] = useState("SignIn");
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setInitialRoute("Notebooks");
-      } else {
-        setInitialRoute("SignIn");
-      }
-    });
-    return unsubscribe; // Clean up the subscription
-  }, []);
   return (
     <AuthProvider>
       <View style={{ flex: 1 }}>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName={initialRoute}>
-            <Stack.Screen
-              name="SignIn"
-              component={SignInScreen}
-              options={({ route }) => ({
-                headerShown: false,
-              })}
-            />
-            <Stack.Screen
-              name="Notes"
-              component={NotesScreen}
-              options={({ route }) => ({
-                title: route.params?.className || "Notes",
-              })}
-            />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
-            <Stack.Screen
-              name="Library"
-              component={LibraryScreen}
-              options={({ route }) => ({
-                headerShown: false,
-              })}
-            />
-            <Stack.Screen
-              name="Notebooks"
-              component={ListOfNotebooks}
-              options={({ route }) => ({
-                headerShown: false,
-                animationEnabled: false,
-              })}
-            />
-            <Stack.Screen
-              name="ListOfLectures"
-              component={ListOfLectures}
-              options={({ route }) => ({
-                headerShown: false,
-                animationEnabled: false,
-              })}
-            />
-            {/*
-            <Stack.Screen
-              name="Notebook"
-              component={NotebookScreen}
-              options={({ route }) => ({
-                title:
-                  route.params?.className + " | " + route.params?.noteName ||
-                  "Notes",
-              })}
-            />
-            */}
-            <Stack.Screen
-              name="Tabs"
-              component={TabNavigator}
-              options={{ headerShown: true, headerTitle: "" }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
+        <IsSignedIn />
       </View>
     </AuthProvider>
   );
 };
 
-function TabNavigator() {
+function IsSignedIn() {
+  const { userInfo } = useAuth();
+  const auth = getAuth();
+  const [signedIn, setSignedIn] = useState("starter");
+  const [googleUser, setGoogleUser] = useState(null);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    let intervalId;
+
+    const fetchUser = async () => {
+      try {
+        const userJSON = await AsyncStorage.getItem("user");
+        if (userJSON) {
+          setGoogleUser(JSON.parse(userJSON));
+        } else {
+          setGoogleUser(null);
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+
+    const checkAuthState = async () => {
+      await fetchUser(); // Ensuring that googleUser is updated before checking auth state
+      const user = auth.currentUser;
+      if (user || googleUser || userInfo) {
+        setSignedIn("home screen");
+
+        // Clear the interval if the home screen is set
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null; // Reset the intervalId to ensure it's cleared only once
+        }
+      } else {
+        setSignedIn("signin screen");
+      }
+    };
+
+    checkAuthState();
+
+    // Set up the interval only if it's not already set (optional)
+    if (!intervalId) {
+      intervalId = setInterval(() => {
+        checkAuthState();
+      }, 3000);
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [googleUser, userInfo]);
+
   return (
-    <Tab.Navigator initialRouteName="Notebook">
-      <Tab.Screen name="Auto-Notes" component={NotebookScreen} />
-      <Tab.Screen name="Gamify" component={ElaborationScreen} />
-    </Tab.Navigator>
+    <NavigationContainer>
+      {signedIn === "starter" && <StartScreen />}
+      {signedIn === "home screen" && <BottomTabsNavigator />}
+      {signedIn === "signin screen" && <SignInStackNavigator />}
+    </NavigationContainer>
+  );
+}
+
+function SignInStackNavigator() {
+  return (
+    <SignInStack.Navigator>
+      <SignInStack.Screen
+        name="SignInScreen"
+        component={SignInScreen}
+        options={({ route }) => ({
+          headerShown: false,
+        })}
+      />
+    </SignInStack.Navigator>
+  );
+}
+
+const BottomTab = createBottomTabNavigator();
+
+function BottomTabsNavigator() {
+  return (
+    <BottomTab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ color, size, focused }) => {
+          let iconName;
+          if (route.name === "HomeStackNavigator") {
+            iconName = focused ? "backpack" : "backpack";
+            color = focused ? "#FF65A3" : "grey";
+            return (
+              <MaterialIcons name={iconName} size={size + 8} color={color} />
+            );
+          } else if (route.name === "NewLectureNavigator") {
+            iconName = focused ? "create" : "create-outline";
+            color = focused ? "#FF65A3" : "grey";
+
+            return <Ionicons name={iconName} size={size + 8} color={color} />;
+          }
+        },
+        tabBarLabel: () => null,
+      })}
+    >
+      <BottomTab.Screen
+        name="HomeStackNavigator"
+        component={HomeStackNavigator}
+        options={({ route }) => ({
+          headerShown: false,
+        })}
+      />
+      <BottomTab.Screen
+        name="NewLectureNavigator"
+        component={NewLectureNavigator}
+        options={{
+          headerShown: false,
+          presentation: "modal",
+        }}
+      />
+    </BottomTab.Navigator>
+  );
+}
+
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator>
+      <HomeStack.Screen
+        name="ListOfNotebooks"
+        component={ListOfNotebooks}
+        options={({ route }) => ({
+          headerShown: true,
+        })}
+      />
+      <HomeStack.Screen
+        name="ListOfLectures"
+        component={ListOfLectures}
+        options={({ route }) => ({
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: "white",
+          },
+          headerTintColor: "black",
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
+          headerBackTitleVisible: false,
+          headerTitle: "Notebook",
+        })}
+      />
+    </HomeStack.Navigator>
+  );
+}
+function NewLectureNavigator() {
+  return (
+    <NewLectureStack.Navigator>
+      <NewLectureStack.Screen
+        name="NewLecture"
+        component={NewLecture}
+        options={({ route }) => ({
+          headerShown: false,
+          presentation: "modal",
+        })}
+      />
+    </NewLectureStack.Navigator>
   );
 }
 

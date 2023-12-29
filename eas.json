@@ -20,6 +20,8 @@
         "EXPO_PUBLIC_SERVER": "http://localhost:4000",
         "EXPO_PUBLIC_SERVER_LIVE": "https://chat-with-notes-server-b9f51be04d4f.herokuapp.com",
         "EXPO_PUBLIC_STRIPE_KEY_LIVE": "pk_live_51Mve8FJ7QtFqMwlQzE11k2N5nIhV5tNURTvabm7tWngP8LfgFekTa5FuhKekCYmW5bux9P3eHlkWFtq36ZJPnyMU00CUp0dt6H",
+        "EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID": "904136774468-a75bsq0qoktsqgp6ve1tad2tokf0l0ge.apps.googleusercontent.com",
+        "EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID": "904136774468-ghdmlbf1o9joeabpg05ld9q4hlmkifmd.apps.googleusercontent.com",
         "DANGEROUSLY_DISABLE_HOST_CHECK": "true"
       }
     },
@@ -41,6 +43,8 @@
         "EXPO_PUBLIC_SERVER": "http://localhost:4000",
         "EXPO_PUBLIC_SERVER_LIVE": "https://chat-with-notes-server-b9f51be04d4f.herokuapp.com",
         "EXPO_PUBLIC_STRIPE_KEY_LIVE": "pk_live_51Mve8FJ7QtFqMwlQzE11k2N5nIhV5tNURTvabm7tWngP8LfgFekTa5FuhKekCYmW5bux9P3eHlkWFtq36ZJPnyMU00CUp0dt6H",
+        "EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID": "904136774468-a75bsq0qoktsqgp6ve1tad2tokf0l0ge.apps.googleusercontent.com",
+        "EXPO_PUBLIC_WEB_GOOGLE_CLIENT_ID": "904136774468-ghdmlbf1o9joeabpg05ld9q4hlmkifmd.apps.googleusercontent.com",
         "DANGEROUSLY_DISABLE_HOST_CHECK": "true"
       }
     }

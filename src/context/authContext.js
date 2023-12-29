@@ -2,12 +2,10 @@ import React, { useContext, useState, useEffect } from "react";
 import {
   getAuth,
   createUserWithEmailAndPassword,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
-  GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
 
@@ -26,15 +24,23 @@ import {
   ref,
   uploadString,
   getDownloadURL,
+  connectStorageEmulator,
 } from "firebase/storage";
-import { signInWithCredential } from "firebase/auth";
 import uuid from "react-native-uuid";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithCredential,
+} from "firebase/auth";
 
 import { db } from "../../firebaseConfig";
-import * as AuthSession from "expo-auth-session";
-import { encode as btoa } from "base-64";
 
 const AuthContext = React.createContext();
+
+WebBrowser.maybeCompleteAuthSession();
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -76,7 +82,7 @@ export function AuthProvider({ children }) {
         password
       );
       if (user) {
-        await createUser(user.uid, email, "no_name", "no_photo");
+        await createUser(email, email, "no_name", "no_photo");
       }
     } catch (err) {
       return err.message;
@@ -317,13 +323,14 @@ export function AuthProvider({ children }) {
     }
   }
   async function getUser(uid) {
-    const docRef = doc(db, "users", uid);
+    const docRef = doc(db, "users", String(uid));
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
     } else {
       // docSnap.data() will be undefined in this case
       console.log("No such document!");
+      return null;
     }
     return docSnap.data();
   }
@@ -378,7 +385,7 @@ export function AuthProvider({ children }) {
     const docData = {
       userId: String(uid),
       createdDate: Timestamp.fromDate(new Date()),
-      email: email,
+      email: String(email),
       name: name, // Storing the user's name
       photoUrl: photoUrl, // Storing the user's photo URL
     };
@@ -493,6 +500,10 @@ export function AuthProvider({ children }) {
   }
 
   async function createClass(uid, className) {
+    const userExists = await getUser(String(uid));
+    if (userExists === null) {
+      return;
+    }
     const classId = uuid.v4();
     const docData = {
       userId: String(uid),
@@ -528,7 +539,7 @@ export function AuthProvider({ children }) {
   async function deleteNotebook(uid, classId) {
     try {
       await setDoc(
-        doc(db, "users", uid, "classes", classId),
+        doc(db, "users", String(uid), "classes", String(classId)),
         {
           status: "deleted",
         },
@@ -566,6 +577,91 @@ export function AuthProvider({ children }) {
       console.error("Error saving Item Name to Firestore: ", error);
     }
   }
+
+  const [userInfo, setUserInfo] = useState();
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId:
+      "904136774468-a75bsq0qoktsqgp6ve1tad2tokf0l0ge.apps.googleusercontent.com",
+    webClientId:
+      "904136774468-ghdmlbf1o9joeabpg05ld9q4hlmkifmd.apps.googleusercontent.com",
+  });
+
+  const getUserInfo = async (token) => {
+    //absent token
+    if (!token) return;
+    //present token
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/userinfo/v2/me",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const user = await response.json();
+      //store user information  in Asyncstorage
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+      setUserInfo(user);
+    } catch (error) {
+      console.error(
+        "Failed to fetch user data:",
+        response.status,
+        response.statusText
+      );
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      // Attempt to retrieve user information from AsyncStorage
+      const userJSON = await AsyncStorage.getItem("user");
+
+      if (userJSON) {
+        // If user information is found in AsyncStorage, parse it and set it in the state
+        setUserInfo(JSON.parse(userJSON));
+      } else if (response?.type === "success") {
+        // If no user information is found and the response type is "success" (assuming response is defined),
+        // call getUserInfo with the access token from the response
+        await getUserInfo(response.authentication.accessToken);
+        const userJSON = await AsyncStorage.getItem("user");
+        const userData = JSON.parse(userJSON);
+        const userAlready = await getUser(userData.email);
+        if (!userAlready) {
+          await createUser(
+            userData.email,
+            userData.email,
+            userData.name,
+            userData.picture
+          );
+        }
+        console.log("returning signinwithgoogle successful sign in ");
+
+        return true;
+      }
+    } catch (error) {
+      // Handle any errors that occur during AsyncStorage retrieval or other operations
+      console.error("Error retrieving user data from AsyncStorage:", error);
+    }
+  };
+
+  async function handleGoogleSignin() {
+    console.log("running promptAsync");
+
+    promptAsync();
+    const success = await signInWithGoogle();
+    if (success) {
+      console.log("succesful google sign in ");
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  useEffect(() => {
+    signInWithGoogle();
+  }, [response]);
+
+  //log the userInfo to see user details
+  console.log(JSON.stringify(userInfo));
 
   async function createLecture(
     uid,
@@ -620,7 +716,7 @@ export function AuthProvider({ children }) {
       const docRef = doc(
         db,
         "users",
-        uid,
+        String(uid),
         "classes",
         classId,
         "lectures",
@@ -669,7 +765,6 @@ export function AuthProvider({ children }) {
     getAllNotes,
     saveNoteResponse,
     saveGptResponse,
-    noteInfo,
     setNoteInfo,
     createClass,
     getAllClassNames,
@@ -679,6 +774,7 @@ export function AuthProvider({ children }) {
     createLecture,
     getAllLectureNames,
     deleteLecture,
+    handleGoogleSignin,
   };
 
   return (

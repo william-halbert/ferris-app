@@ -12,17 +12,19 @@ import {
   Button,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Footer from "./Footer";
 import { Animated, Dimensions } from "react-native";
 import { Keyboard } from "react-native";
 import { PanResponder } from "react-native";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
 import ListOfLectures from "./listOfLectures";
+import { app } from "../../firebaseConfig";
+import { useLayoutEffect } from "react";
+
 // Image assets
 const Spiral = require("../../assets/spiral.png");
 const BackpackImg = require("../../assets/unzippedBackpackBlue.png");
-const ClosedBackpack = require("../../assets/backpackBlue.png");
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Main screen component that renders notebooks in a grid
 const ListOfNotebooks = ({ navigation }) => {
@@ -31,22 +33,68 @@ const ListOfNotebooks = ({ navigation }) => {
   const [isDeleteSheetVisible, setIsDeleteSheetVisible] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState(null);
   const [newNotebookName, setNewNotebookName] = useState("");
+  const [userPopupVisbile, setUserPopupVisible] = useState(false);
+  const [aPopUpIsVisible, setAPopupIsVisible] = useState(false);
 
-  const auth = getAuth();
-  const { createClass, getAllClassNames, deleteNotebook, editNotebookName } =
-    useAuth();
-  const user = auth.currentUser;
+  const auth = getAuth(app);
+  const {
+    createClass,
+    getAllClassNames,
+    deleteNotebook,
+    editNotebookName,
+    getUser,
+  } = useAuth();
+
+  const toggleUserPopup = () => {
+    setUserPopupVisible((prevState) => !prevState);
+  };
+
+  const openUserPopup = () => {
+    setUserPopupVisible(true);
+  };
+
+  const closeUserPopup = () => {
+    setUserPopupVisible(false);
+  };
+
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    // Fetching user data
+    const fetchUser = async () => {
+      try {
+        console.log("new fetch");
+
+        const firebaseUser = auth.currentUser;
+        const googleUser = await AsyncStorage.getItem("user");
+
+        if (firebaseUser) {
+          return firebaseUser;
+        } else if (googleUser) {
+          return JSON.parse(googleUser);
+        } else {
+          console.log("No users found");
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchUser().then((potentialUser) => {
+      setUser(potentialUser);
+      console.log(potentialUser);
+    });
+  }, []); // Empty dependency array to run only on component mount
 
   useEffect(() => {
-    async function fetchClasses() {
+    // Fetching classes when user changes
+    const fetchClasses = async () => {
       if (user) {
         try {
-          const userClasses = await getAllClassNames(user.uid);
-          console.log("Fetched classes:", userClasses);
+          console.log("new fetch");
+          const userClasses = await getAllClassNames(user.email);
           if (userClasses && Array.isArray(userClasses)) {
-            // Filter to only include "live" notebooks and prepend the "Add New" notebook
             const liveNotebooks = userClasses
-              .filter((c) => c.status === "live") // Filter for live notebooks
+              .filter((c) => c.status === "live")
               .map((c) => ({
                 name: c.className,
                 status: c.status,
@@ -61,12 +109,67 @@ const ListOfNotebooks = ({ navigation }) => {
           console.error("Failed to fetch classes:", error);
         }
       } else {
-        console.log("No user found");
+        console.log("No user found to fetch notebooks");
       }
-    }
+    };
 
     fetchClasses();
-  }, [user, getAllClassNames]);
+  }, [user]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <Image
+          source={require("../../assets/ferrisFace.png")}
+          style={{ width: 45, height: 45, position: "relative", top: -5 }}
+        />
+      ),
+      headerLeft: () => (
+        <TouchableOpacity>
+          <Image
+            source={require("../../assets/unzippedBackpackBlue.png")}
+            style={{
+              marginLeft: 15,
+              width: 37,
+              height: 37,
+              position: "relative",
+              top: -5,
+            }}
+          />
+        </TouchableOpacity>
+      ),
+      headerRight: () =>
+        user && (
+          <TouchableOpacity
+            onPress={() => toggleUserPopup(userPopupVisbile)}
+            style={{
+              marginRight: 15,
+              width: 35,
+              height: 35,
+              borderRadius: 30,
+              justifyContent: "center",
+              alignItems: "center",
+              position: "relative",
+              top: -5,
+              borderWidth: user.picture ? 0 : 2,
+              borderColor: user.picture ? "white" : "#FF65A3",
+              backgroundColor: "white",
+            }}
+          >
+            {user.picture ? (
+              <Image
+                source={{ uri: user.picture }}
+                style={{ width: 30, height: 30, borderRadius: 30 }}
+              />
+            ) : (
+              <Text style={{ color: "#FF65A3", fontWeight: "bold" }}>
+                {user.email.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ),
+    });
+  }, [user]);
 
   const onNotebookPress = (notebook) => {
     navigation.navigate("ListOfLectures", { notebook });
@@ -92,30 +195,12 @@ const ListOfNotebooks = ({ navigation }) => {
     setIsDeleteSheetVisible(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (notebookToDelete) {
-      try {
-        await deleteNotebook(
-          String(user.uid),
-          String(notebookToDelete.classId)
-        );
-
-        setNotebooks(
-          notebooks.filter((n) => n.classId !== notebookToDelete.classId)
-        );
-
-        setDeleteDialogOpen(false);
-        setNotebookToDelete(null);
-      } catch (error) {
-        console.error("Error deleting the notebook:", error);
-        // Optionally, show an error message to the user
-      }
-    }
-  };
-
   const handleNotebookDelete = async (notebook) => {
     try {
-      await deleteNotebook(String(user.uid), String(notebook.classId));
+      console.log("user", String(user.email));
+      console.log("classId", String(notebook.classId));
+
+      await deleteNotebook(String(user.email), String(notebook.classId));
       setNotebooks(notebooks.filter((n) => n.classId !== notebook.classId));
       setIsDeleteSheetVisible(false);
     } catch (error) {
@@ -133,11 +218,15 @@ const ListOfNotebooks = ({ navigation }) => {
   };
 
   const handleRenameSubmit = async (newName, classId) => {
-    // Check if classId is provided
+    // Check if classId is
     if (classId) {
       try {
         // Call editNotebookName with classId
-        await editNotebookName(String(user.uid), String(classId), newName);
+        console.log("user", String(user.email));
+        console.log("classid:", String(classId));
+        console.log("newName:", newName);
+
+        await editNotebookName(String(user.email), String(classId), newName);
 
         // Update the notebook name in the state
         setNotebooks(
@@ -236,7 +325,7 @@ const ListOfNotebooks = ({ navigation }) => {
     if (newNotebookName) {
       // Ensure we are using the correct state variable
       try {
-        await createClass(String(user.uid), newNotebookName); // Create class
+        await createClass(String(user.email), newNotebookName); // Create class
         console.log("Class created successfully"); // Debugging output
 
         setNotebooks((prevClasses) => [
@@ -272,7 +361,7 @@ const ListOfNotebooks = ({ navigation }) => {
       flexWrap: "wrap",
       justifyContent: "start",
       alignItems: "center",
-      gap: 40,
+      gap: 50,
       paddingLeft: calcPaddingLeft,
     },
   });
@@ -282,16 +371,6 @@ const ListOfNotebooks = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container]}>
-        <TouchableOpacity
-          onPress={handleGoBack}
-          style={{
-            width: 100,
-            height: 80,
-            backgroundColor: "transparent",
-          }}
-        >
-          <Image source={BackpackImg} style={styles.backpack} />
-        </TouchableOpacity>
         <View
           style={{
             flexDirection: "row",
@@ -331,12 +410,13 @@ const ListOfNotebooks = ({ navigation }) => {
                   onRenamePress={() => handleRenamePress(notebook)}
                   onDeletePress={() => handleDeletePress(notebook)}
                   backgroundColor={colors[index % colors.length]}
+                  setAPopupIsVisible={setAPopupIsVisible}
+                  aPopUpIsVisible={aPopUpIsVisible}
                 />
               ))
             )}
           </ScrollView>
         </View>
-        <Footer navigation={navigation} />
       </View>
       {isBottomSheetVisible && (
         <TouchableOpacity
@@ -357,6 +437,24 @@ const ListOfNotebooks = ({ navigation }) => {
           activeOpacity={1}
           style={StyleSheet.absoluteFill}
           onPress={handleCancelDelete}
+        />
+      )}
+      {aPopUpIsVisible && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            setAPopupIsVisible(false);
+          }}
+        />
+      )}
+      {userPopupVisbile && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            setUserPopupVisible(false);
+          }}
         />
       )}
       {isBottomSheetVisible && (
@@ -394,6 +492,7 @@ const ListOfNotebooks = ({ navigation }) => {
           onCancel={handleCancelDelete}
         />
       )}
+      {userPopupVisbile && <UserPopup isVisible={userPopupVisbile} />}
     </SafeAreaView>
   );
 };
@@ -402,11 +501,25 @@ const Popup = ({ isVisible, position, onRename, onDelete }) => {
   if (!isVisible) return null;
   return (
     <View style={[styles.popup, { top: position.y, left: position.x }]}>
-      <TouchableOpacity onPress={onRename}>
-        <Text style={styles.popupText}>Rename</Text>
+      <TouchableOpacity onPress={onRename} style={styles.topPopupText}>
+        <Text style={styles.PopupText}>Rename</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={onDelete}>
-        <Text style={styles.popupText}>Delete</Text>
+      <TouchableOpacity onPress={onDelete} style={styles.bottomPopupText}>
+        <Text style={styles.PopupText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const UserPopup = ({ isVisible, onLogout, onDeleteAccount }) => {
+  if (!isVisible) return null;
+  return (
+    <View style={[styles.userPopup]}>
+      <TouchableOpacity onPress={() => {}} style={styles.topPopupText}>
+        <Text style={styles.PopupText}>Logout</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => {}} style={styles.bottomPopupText}>
+        <Text style={styles.PopupText}>Delete Account</Text>
       </TouchableOpacity>
     </View>
   );
@@ -441,6 +554,19 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
     zIndex: 10,
   },
+  userPopup: {
+    width: 130,
+    position: "absolute",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "black",
+    borderRadius: 4,
+    padding: 0,
+    zIndex: 2,
+    textAlign: "center",
+    top: 3, // Adjust if needed
+    right: 3, // Adjust if needed
+  },
 
   notebook: {
     width: 120, // Approximate width for 2 columns
@@ -451,7 +577,6 @@ const styles = StyleSheet.create({
     borderColor: "black",
     position: "relative",
     height: 160,
-    paddingHorizontal: 10,
   },
   notebookTouchable: {
     width: 120, // Ensure the touchable area does not exceed the notebook size
@@ -460,6 +585,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 1, // Ensure the touchable area is above the spiral image
     borderWidth: 1,
+    paddingHorizontal: 10,
   },
   spiralMask: {
     position: "absolute",
@@ -480,6 +606,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "black",
     fontWeight: "bold",
+    textAlign: "center",
   },
   plusIcon: {
     fontSize: 30,
@@ -501,7 +628,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 0, // Spacing from the top edge
     textAlign: "center",
-    padding: 20,
+    padding: 0,
   },
   bottomSheet: {
     position: "absolute",
@@ -512,6 +639,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 20,
+    zIndex: 5,
   },
   addButton: {
     backgroundColor: "#4630EB", // Deep blue background
@@ -541,18 +669,40 @@ const styles = StyleSheet.create({
     zIndex: 2, // Ensure the icon is above other elements
   },
   popup: {
+    width: 100,
     position: "absolute",
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "black",
     borderRadius: 4,
-    padding: 10,
+    padding: 0,
     zIndex: 2,
+    textAlign: "center",
   },
-  popupText: {
+  topPopupText: {
     fontSize: 16,
     color: "black",
     padding: 8,
+    borderBottomColor: "black",
+    borderTopColor: "black",
+    borderTopWidth: 0,
+    borderBottomWidth: 0.5,
+    width: "100%",
+    textAlign: "center",
+    padding: 10,
+  },
+  PopupText: { textAlign: "center" },
+  bottomPopupText: {
+    fontSize: 16,
+    color: "black",
+    padding: 8,
+    borderBottomColor: "black",
+    borderTopColor: "black",
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0,
+    textAlign: "center",
+    padding: 10,
+    width: "100%",
   },
   renameBottomSheet: {
     position: "absolute",
@@ -728,6 +878,8 @@ const Notebook = ({
   backgroundColor,
   onRenamePress,
   onDeletePress,
+  setAPopupIsVisible,
+  aPopUpIsVisible,
 }) => {
   const [clicked, setClicked] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
@@ -742,6 +894,7 @@ const Notebook = ({
     }
   };
   const closePopup = () => {
+    setAPopupIsVisible(false);
     setPopupVisible(false);
   };
   const handleMenuPress = (event) => {
@@ -766,8 +919,15 @@ const Notebook = ({
 
     // Set the position state
     setPopupPosition({ x: adjustedX, y: adjustedY });
+    setAPopupIsVisible(!aPopUpIsVisible);
     setPopupVisible(!popupVisible);
   };
+
+  useEffect(() => {
+    if (aPopUpIsVisible === false) {
+      closePopup();
+    }
+  }, [aPopUpIsVisible]);
 
   const handleRename = () => {
     onRenamePress(title);

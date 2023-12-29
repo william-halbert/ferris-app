@@ -2,11 +2,11 @@ export default {
   expo: {
     name: "Ferris",
     slug: "essial",
-    version: "1.1.116",
+    version: "1.1.1201",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    scheme: "ferris",
+    scheme: "ferrisnotes",
     privacy: "unlisted",
     owner: "willhalbert",
     splash: {
@@ -36,6 +36,7 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#fff4fb",
       },
+      package: "so.ferris.ferris",
     },
     web: {
       favicon: "./assets/favicon.png",

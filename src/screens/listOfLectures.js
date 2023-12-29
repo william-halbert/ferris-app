@@ -13,16 +13,16 @@ import {
   Button,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Footer from "./Footer";
 import { Animated, Dimensions } from "react-native";
 import { Keyboard } from "react-native";
 import { PanResponder } from "react-native";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLayoutEffect } from "react";
+
 // Image assets
-const Spiral = require("../../assets/spiral.png");
 const BackpackImg = require("../../assets/unzippedBackpackBlue.png");
-const ClosedBackpack = require("../../assets/backpackBlue.png");
 import uuid from "react-native-uuid";
 
 // Main screen component that renders notebooks in a grid
@@ -35,30 +35,54 @@ const ListOfLectures = ({ navigation }) => {
   const [isDeleteSheetVisible, setIsDeleteSheetVisible] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState(null);
   const [newNotebookName, setNewNotebookName] = useState("");
+  const [aPopUpIsVisible, setAPopupIsVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: notebook.name,
+    });
+  }, []);
 
   const auth = getAuth();
-  const {
-    createClass,
-    getAllClassNames,
-    deleteNotebook,
-    editNotebookName,
-    editLectureName,
-    createLecture,
-    getAllLectureNames,
-    deleteLecture,
-  } = useAuth();
+  const { editLectureName, createLecture, getAllLectureNames, deleteLecture } =
+    useAuth();
 
-  const user = auth.currentUser;
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    // Fetching user data
+    const fetchUser = async () => {
+      try {
+        console.log("new fetch");
+        const firebaseUser = auth.currentUser;
+        const googleUser = await AsyncStorage.getItem("user");
+
+        if (firebaseUser) {
+          return firebaseUser;
+        } else if (googleUser) {
+          return JSON.parse(googleUser);
+        } else {
+          console.log("No users found");
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchUser().then((potentialUser) => {
+      setUser(potentialUser);
+    });
+  }, []); // Empty dependency array to run only on component mount
 
   useEffect(() => {
+    // Fetching classes when user changes
     async function fetchClasses() {
       if (user) {
         try {
           const userClasses = await getAllLectureNames(
-            user.uid,
+            user.email,
             notebook.classId
           );
-          console.log("Fetched classes:", userClasses);
+          console.log("Fetched Lectures:", userClasses);
           if (userClasses && Array.isArray(userClasses)) {
             // Filter to only include "live" notebooks and prepend the "Add New" notebook
             const liveNotebooks = userClasses
@@ -85,7 +109,7 @@ const ListOfLectures = ({ navigation }) => {
     }
 
     fetchClasses();
-  }, [user, getAllClassNames]);
+  }, [user]);
 
   const onNotebookPress = (notebook) => {};
 
@@ -104,7 +128,7 @@ const ListOfLectures = ({ navigation }) => {
   };
 
   const handleDeletePress = (notebook) => {
-    console.log("Deleting notebook:", notebook.name); // Debugging log
+    console.log("Deleting notebook:", notebook.lectureName); // Debugging log
     setNotebookToDelete(notebook);
     setIsDeleteSheetVisible(true);
   };
@@ -112,13 +136,13 @@ const ListOfLectures = ({ navigation }) => {
   const handleDeleteConfirm = async () => {
     if (notebookToDelete) {
       try {
-        await deleteNotebook(
-          String(user.uid),
-          String(notebookToDelete.classId)
+        await deleteLecture(
+          String(user.email),
+          String(thisNotebook.classId),
+          String(notebookToDelete.lectureId)
         );
-
         setNotebooks(
-          notebooks.filter((n) => n.classId !== notebookToDelete.classId)
+          notebooks.filter((n) => n.lectureId !== notebookToDelete.lectureId)
         );
 
         setDeleteDialogOpen(false);
@@ -132,8 +156,12 @@ const ListOfLectures = ({ navigation }) => {
 
   const handleNotebookDelete = async (notebook) => {
     try {
-      await deleteNotebook(String(user.uid), String(notebook.classId));
-      setNotebooks(notebooks.filter((n) => n.classId !== notebook.classId));
+      await deleteLecture(
+        String(user.email),
+        String(thisNotebook.classId),
+        String(notebook.lectureId)
+      );
+      setNotebooks(notebooks.filter((n) => n.lectureId !== notebook.lectureId));
       setIsDeleteSheetVisible(false);
     } catch (error) {
       console.error("Error deleting the notebook:", error);
@@ -145,21 +173,29 @@ const ListOfLectures = ({ navigation }) => {
   };
 
   const handleRenamePress = (notebook) => {
-    setCurrentNotebookName({ name: notebook.name, classId: notebook.classId });
+    setCurrentNotebookName({
+      lectureName: notebook.lectureName,
+      lectureId: notebook.lectureId,
+      classId: notebook.classId,
+    });
     setRenameSheetVisible(true);
   };
 
-  const handleRenameSubmit = async (newName, classId) => {
+  const handleRenameSubmit = async (newName, lectureId) => {
     // Check if classId is provided
-    if (classId) {
+    if (lectureId) {
       try {
         // Call editNotebookName with classId
-        await editNotebookName(String(user.uid), String(classId), newName);
-
+        await editLectureName(
+          String(user.email),
+          String(thisNotebook.classId),
+          String(lectureId),
+          newName
+        );
         // Update the notebook name in the state
         setNotebooks(
           notebooks.map((n) =>
-            n.classId === classId ? { ...n, name: newName } : n
+            n.lectureId === lectureId ? { ...n, lectureName: newName } : n
           )
         );
         setRenameSheetVisible(false);
@@ -273,7 +309,7 @@ const ListOfLectures = ({ navigation }) => {
           lectureId,
         };
         await createLecture(
-          String(user.uid),
+          String(user.email),
           String(thisNotebook.classId),
           thisNotebook.name,
           newNotebookName,
@@ -295,7 +331,7 @@ const ListOfLectures = ({ navigation }) => {
   };
 
   const handleGoBack = () => {
-    navigation.navigate("Notebooks");
+    navigation.navigate("ListOfNotebooks");
     setOpenNotebook(null);
   };
 
@@ -322,16 +358,6 @@ const ListOfLectures = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container]}>
-        <TouchableOpacity
-          onPress={handleGoBack}
-          style={{
-            width: 100,
-            height: 80,
-            backgroundColor: "transparent",
-          }}
-        >
-          <Image source={BackpackImg} style={styles.backpack} />
-        </TouchableOpacity>
         <ScrollView
           contentContainerStyle={[contentContainerStyles.contentContainer]}
         >
@@ -357,11 +383,12 @@ const ListOfLectures = ({ navigation }) => {
                 onDeletePress={() => handleDeletePress(notebook)}
                 backgroundColor={colors[index % colors.length]}
                 abbrevDate={notebook.abbrevDate}
+                setAPopupIsVisible={setAPopupIsVisible}
+                aPopUpIsVisible={aPopUpIsVisible}
               />
             ))
           )}
         </ScrollView>
-        <Footer navigation={navigation} />
       </View>
       {isBottomSheetVisible && (
         <TouchableOpacity
@@ -382,6 +409,15 @@ const ListOfLectures = ({ navigation }) => {
           activeOpacity={1}
           style={StyleSheet.absoluteFill}
           onPress={handleCancelDelete}
+        />
+      )}
+      {aPopUpIsVisible && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            setAPopupIsVisible(false);
+          }}
         />
       )}
       {isBottomSheetVisible && (
@@ -405,7 +441,7 @@ const ListOfLectures = ({ navigation }) => {
           isVisible={renameSheetVisible}
           initialName={currentNotebookName.name}
           onRenameSubmit={(newName) =>
-            handleRenameSubmit(newName, currentNotebookName.classId)
+            handleRenameSubmit(newName, currentNotebookName.lectureId)
           }
           onCancel={handleCancelRename}
           setRenameSheetVisible={setRenameSheetVisible}
@@ -807,6 +843,8 @@ const Lecture = ({
   onDeletePress,
   classId,
   abbrevDate,
+  setAPopupIsVisible,
+  aPopUpIsVisible,
 }) => {
   const [clicked, setClicked] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
@@ -821,6 +859,7 @@ const Lecture = ({
     }
   };
   const closePopup = () => {
+    setAPopupIsVisible(false);
     setPopupVisible(false);
   };
 
@@ -846,8 +885,15 @@ const Lecture = ({
 
     // Set the position state
     setPopupPosition({ x: adjustedX, y: adjustedY });
+    setAPopupIsVisible(!aPopUpIsVisible);
     setPopupVisible(!popupVisible);
   };
+
+  useEffect(() => {
+    if (aPopUpIsVisible === false) {
+      closePopup();
+    }
+  }, [aPopUpIsVisible]);
 
   const handleRename = () => {
     onRenamePress(title);

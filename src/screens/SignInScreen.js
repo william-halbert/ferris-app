@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -20,31 +21,41 @@ const SignInScreen = ({ navigation }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authStep, setAuthStep] = useState("initial");
-  const { login, signInWithGoogle, signup, resetPassword } = useAuth();
+  const { login, signup, resetPassword, handleGoogleSignin, userInfo } =
+    useAuth();
   const auth = getAuth();
+  const [googleUser, setGoogleUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userJSON = await AsyncStorage.getItem("user");
+        if (userJSON) {
+          setGoogleUser(JSON.parse(userJSON));
+        } else {
+          setGoogleUser(null);
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+
+    fetchUser();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      // Check if any form of user is available
+      if (user || googleUser || userInfo) {
+      } else {
+      }
+    });
+
+    // Return the function to unsubscribe from the listener
+    return unsubscribe;
+  }, [auth, googleUser, userInfo]);
 
   useEffect(() => {
     if (auth.currentUser) {
-      navigation.navigate("Notebooks");
     }
   }, [auth.currentUser]);
-
-  const handleGoogleSignIn = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const response = await signInWithGoogle();
-      setLoading(false);
-      if (response === "success") {
-        navigation.navigate("Notebooks");
-      } else {
-        setError(response);
-      }
-    } catch (err) {
-      setLoading(false);
-      setError("Failed to sign in with Google");
-    }
-  };
 
   const handleEmailContinue = () => {
     setAuthStep("email");
@@ -65,7 +76,6 @@ const SignInScreen = ({ navigation }) => {
         return setError(response);
       } else {
         setSuccess("You're logged in!");
-        navigation.navigate("Notebooks");
       }
     } catch (err) {
       console.log(err);
@@ -78,7 +88,11 @@ const SignInScreen = ({ navigation }) => {
       setSuccess("");
       const response = await signup(email, password);
       if (response != "success") {
-        return setError(response);
+        if (response == "Firebase: Error (auth/email-already-in-use).") {
+          return;
+        } else {
+          return setError(response);
+        }
       } else {
         return setSuccess("You're signed up!");
       }
@@ -119,7 +133,10 @@ const SignInScreen = ({ navigation }) => {
           await handleLogin();
           console.log("logged in");
         } catch (loginError) {
-          console.log("loginError", loginError);
+          if (loginError === "auth-error blah blah") {
+          } else {
+            console.log("loginError", loginError);
+          }
         }
       }, 1000);
     } catch (error) {
@@ -135,10 +152,34 @@ const SignInScreen = ({ navigation }) => {
     }
   };
 
+  const GoogleSignInButton = async () => {
+    console.log("running handleGoogleSignin");
+    const success = await handleGoogleSignin();
+    if (success) {
+      console.log("running end signinscreen");
+      const fetchUser = async () => {
+        try {
+          const googleUser = await AsyncStorage.getItem("user");
+          if (googleUser) {
+            return JSON.parse(googleUser);
+          } else {
+            console.log("No users found");
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      };
+
+      fetchUser().then((potentialUser) => {
+        setUser(potentialUser);
+      });
+    }
+  };
+
   const renderInitialScreen = () => (
     <View>
       <TouchableOpacity
-        onPress={handleGoogleSignIn}
+        onPress={GoogleSignInButton}
         style={styles.googleSignInButton}
       >
         <Image
@@ -147,8 +188,11 @@ const SignInScreen = ({ navigation }) => {
         />
         <Text style={styles.googleSignInText}>Continue with Google</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleEmailContinue} style={styles.button}>
-        <Text style={styles.buttonText}>Continue with Email</Text>
+      <TouchableOpacity
+        onPress={handleEmailContinue}
+        style={styles.ContinueWithEmailButton}
+      >
+        <Text style={styles.ContinueWithEmailText}>Continue with Email</Text>
       </TouchableOpacity>
       <Text style={styles.termsText}>
         By continuing, you agree to Ferris's{" "}
@@ -274,7 +318,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center", // Center the content
-    backgroundColor: "#f5f5f5", // Light grey background
+    backgroundColor: "rgb(230,230,230)",
     padding: 10,
     borderRadius: 4,
     height: 50, // Match the height to "Continue with Email" button
@@ -358,6 +402,19 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline", // Optional: to keep the underline
     textAlign: "center",
     textDecorationLine: "none",
+  },
+  ContinueWithEmailText: {
+    color: "black",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  ContinueWithEmailButton: {
+    backgroundColor: "rgb(245,245,245)",
+    padding: 16,
+    borderRadius: 5,
+    alignItems: "center",
+    marginBottom: 10,
   },
 });
 
