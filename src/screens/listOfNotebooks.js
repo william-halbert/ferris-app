@@ -27,7 +27,7 @@ const BackpackImg = require("../../assets/unzippedBackpackBlue.png");
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Main screen component that renders notebooks in a grid
-const ListOfNotebooks = ({ navigation }) => {
+const ListOfNotebooks = ({ navigation, route }) => {
   const [openNotebook, setOpenNotebook] = useState(null);
   const [notebooks, setNotebooks] = useState([]);
   const [isDeleteSheetVisible, setIsDeleteSheetVisible] = useState(false);
@@ -35,6 +35,9 @@ const ListOfNotebooks = ({ navigation }) => {
   const [newNotebookName, setNewNotebookName] = useState("");
   const [userPopupVisbile, setUserPopupVisible] = useState(false);
   const [aPopUpIsVisible, setAPopupIsVisible] = useState(false);
+  const [userType, setUserType] = useState("");
+  const [isDeleteAccountSheetVisible, setIsDeleteAccountSheetVisible] =
+    useState(false);
 
   const auth = getAuth(app);
   const {
@@ -43,7 +46,40 @@ const ListOfNotebooks = ({ navigation }) => {
     deleteNotebook,
     editNotebookName,
     getUser,
+    logout,
+    deleteAccount,
   } = useAuth();
+
+  const handleCancelDeleteAccount = () => {
+    setIsDeleteAccountSheetVisible(false);
+  };
+
+  const handleDeleteAccountPress = () => {
+    setIsDeleteAccountSheetVisible(true);
+    setUserPopupVisible(false);
+  };
+
+  const handleLogout = async () => {
+    console.log("logout pressed");
+    let result;
+    if (userType) {
+      result = await logout(userType);
+    }
+    if (result === "success") {
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    console.log("delete account pressed");
+
+    let result;
+    if (userType && user.email) {
+      console.log("email and user type received");
+      result = await deleteAccount(user, user.email, userType);
+    }
+    if (result === "success") {
+    }
+  };
 
   const toggleUserPopup = () => {
     setUserPopupVisible((prevState) => !prevState);
@@ -58,18 +94,20 @@ const ListOfNotebooks = ({ navigation }) => {
   };
 
   const [user, setUser] = useState(null);
+
   useEffect(() => {
     // Fetching user data
     const fetchUser = async () => {
       try {
-        console.log("new fetch");
+        console.log("new user fetch, notebooks page");
 
         const firebaseUser = auth.currentUser;
         const googleUser = await AsyncStorage.getItem("user");
-
         if (firebaseUser) {
+          setUserType("firebase");
           return firebaseUser;
         } else if (googleUser) {
+          setUserType("google");
           return JSON.parse(googleUser);
         } else {
           console.log("No users found");
@@ -90,7 +128,7 @@ const ListOfNotebooks = ({ navigation }) => {
     const fetchClasses = async () => {
       if (user) {
         try {
-          console.log("new fetch");
+          console.log("new classes fetch, notebooks page");
           const userClasses = await getAllClassNames(user.email);
           if (userClasses && Array.isArray(userClasses)) {
             const liveNotebooks = userClasses
@@ -114,14 +152,20 @@ const ListOfNotebooks = ({ navigation }) => {
     };
 
     fetchClasses();
-  }, [user]);
+  }, [user, navigation, route]);
+
+  React.useEffect(() => {
+    navigation.getParent()?.setOptions({
+      tabBarStyle: { display: "unset" },
+    });
+  }, [navigation, route]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
         <Image
           source={require("../../assets/ferrisFace.png")}
-          style={{ width: 45, height: 45, position: "relative", top: -5 }}
+          style={{ width: 40, height: 40, position: "relative", top: -5 }}
         />
       ),
       headerLeft: () => (
@@ -129,11 +173,11 @@ const ListOfNotebooks = ({ navigation }) => {
           <Image
             source={require("../../assets/unzippedBackpackBlue.png")}
             style={{
-              marginLeft: 15,
+              marginLeft: 0,
               width: 37,
               height: 37,
               position: "relative",
-              top: -5,
+              top: -3,
             }}
           />
         </TouchableOpacity>
@@ -143,14 +187,14 @@ const ListOfNotebooks = ({ navigation }) => {
           <TouchableOpacity
             onPress={() => toggleUserPopup(userPopupVisbile)}
             style={{
-              marginRight: 15,
+              marginRight: 0,
               width: 35,
               height: 35,
               borderRadius: 30,
               justifyContent: "center",
               alignItems: "center",
               position: "relative",
-              top: -5,
+              top: -3,
               borderWidth: user.picture ? 0 : 2,
               borderColor: user.picture ? "white" : "#FF65A3",
               backgroundColor: "white",
@@ -439,15 +483,6 @@ const ListOfNotebooks = ({ navigation }) => {
           onPress={handleCancelDelete}
         />
       )}
-      {aPopUpIsVisible && (
-        <TouchableOpacity
-          activeOpacity={1}
-          style={StyleSheet.absoluteFill}
-          onPress={() => {
-            setAPopupIsVisible(false);
-          }}
-        />
-      )}
       {userPopupVisbile && (
         <TouchableOpacity
           activeOpacity={1}
@@ -492,7 +527,27 @@ const ListOfNotebooks = ({ navigation }) => {
           onCancel={handleCancelDelete}
         />
       )}
-      {userPopupVisbile && <UserPopup isVisible={userPopupVisbile} />}
+      {userPopupVisbile && (
+        <UserPopup
+          isVisible={userPopupVisbile}
+          handleLogout={handleLogout}
+          handleDeletePress={handleDeleteAccountPress}
+        />
+      )}
+      {isDeleteAccountSheetVisible && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={StyleSheet.absoluteFill}
+          onPress={handleCancelDeleteAccount}
+        />
+      )}
+      {isDeleteAccountSheetVisible && (
+        <DeleteAccountBottomSheet
+          isVisible={isDeleteAccountSheetVisible}
+          onDeleteConfirm={handleDeleteAccount}
+          onCancel={handleCancelDeleteAccount}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -511,14 +566,17 @@ const Popup = ({ isVisible, position, onRename, onDelete }) => {
   );
 };
 
-const UserPopup = ({ isVisible, onLogout, onDeleteAccount }) => {
+const UserPopup = ({ isVisible, handleLogout, handleDeletePress }) => {
   if (!isVisible) return null;
   return (
     <View style={[styles.userPopup]}>
-      <TouchableOpacity onPress={() => {}} style={styles.topPopupText}>
+      <TouchableOpacity onPress={handleLogout} style={styles.topPopupText}>
         <Text style={styles.PopupText}>Logout</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => {}} style={styles.bottomPopupText}>
+      <TouchableOpacity
+        onPress={handleDeletePress}
+        style={styles.bottomPopupText}
+      >
         <Text style={styles.PopupText}>Delete Account</Text>
       </TouchableOpacity>
     </View>
@@ -554,6 +612,7 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
     zIndex: 10,
   },
+  absoluteFill: { zindex: 3, borderWidth: 3, borderColor: "red" },
   userPopup: {
     width: 130,
     position: "absolute",
@@ -577,13 +636,14 @@ const styles = StyleSheet.create({
     borderColor: "black",
     position: "relative",
     height: 160,
+    zIndex: 3,
   },
   notebookTouchable: {
     width: 120, // Ensure the touchable area does not exceed the notebook size
     height: 160,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1, // Ensure the touchable area is above the spiral image
+    zIndex: 3, // Ensure the touchable area is above the spiral image
     borderWidth: 1,
     paddingHorizontal: 10,
   },
@@ -666,7 +726,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     right: 4,
-    zIndex: 2, // Ensure the icon is above other elements
+    zIndex: 5, // Ensure the icon is above other elements
   },
   popup: {
     width: 100,
@@ -676,7 +736,7 @@ const styles = StyleSheet.create({
     borderColor: "black",
     borderRadius: 4,
     padding: 0,
-    zIndex: 2,
+    zIndex: 7,
     textAlign: "center",
   },
   topPopupText: {
@@ -930,12 +990,16 @@ const Notebook = ({
   }, [aPopUpIsVisible]);
 
   const handleRename = () => {
+    console.log("rename");
     onRenamePress(title);
+    setAPopupIsVisible(false);
     setPopupVisible(false);
   };
 
   const handleDelete = () => {
+    console.log("delete");
     onDeletePress(); // Invoke the onDeletePress passed from the parent
+    setAPopupIsVisible(false);
     setPopupVisible(false);
   };
 
@@ -978,3 +1042,47 @@ const colors = [
   "#F0B5B3",
   "#FF9AA2",
 ];
+
+const DeleteAccountBottomSheet = ({ isVisible, onDeleteConfirm, onCancel }) => {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const show = () => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const hide = () => {
+    Animated.timing(translateY, {
+      toValue: Dimensions.get("window").height,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      onCancel();
+    });
+  };
+
+  useEffect(() => {
+    isVisible ? show() : hide();
+  }, [isVisible]);
+
+  const handleDeleteConfirm = () => {
+    onDeleteConfirm();
+    hide();
+  };
+
+  return (
+    <Animated.View
+      style={[styles.deleteBottomSheet, { transform: [{ translateY }] }]}
+    >
+      <Text style={styles.deleteText}>
+        Are you sure you want to delete your account?
+      </Text>
+      <TouchableOpacity onPress={handleDeleteConfirm} style={styles.addButton}>
+        <Text style={styles.buttonText}>Delete</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};

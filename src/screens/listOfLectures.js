@@ -20,14 +20,14 @@ import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLayoutEffect } from "react";
+import { app } from "../../firebaseConfig";
 
 // Image assets
 const BackpackImg = require("../../assets/unzippedBackpackBlue.png");
 import uuid from "react-native-uuid";
 
 // Main screen component that renders notebooks in a grid
-const ListOfLectures = ({ navigation }) => {
-  const route = useRoute();
+const ListOfLectures = ({ navigation, route }) => {
   const { notebook } = route.params;
   const thisNotebook = notebook;
   const [openNotebook, setOpenNotebook] = useState(null);
@@ -43,16 +43,22 @@ const ListOfLectures = ({ navigation }) => {
     });
   }, []);
 
-  const auth = getAuth();
-  const { editLectureName, createLecture, getAllLectureNames, deleteLecture } =
-    useAuth();
+  const auth = getAuth(app);
+  const {
+    editLectureName,
+    createLecture,
+    getAllLectureNames,
+    deleteLecture,
+    createRawNotes,
+  } = useAuth();
 
   const [user, setUser] = useState(null);
+
   useEffect(() => {
     // Fetching user data
     const fetchUser = async () => {
       try {
-        console.log("new fetch");
+        console.log("new user fetch, list of lectures page");
         const firebaseUser = auth.currentUser;
         const googleUser = await AsyncStorage.getItem("user");
 
@@ -78,11 +84,12 @@ const ListOfLectures = ({ navigation }) => {
     async function fetchClasses() {
       if (user) {
         try {
+          console.log("new lecture fetch, list of lecture page");
+
           const userClasses = await getAllLectureNames(
             user.email,
             notebook.classId
           );
-          console.log("Fetched Lectures:", userClasses);
           if (userClasses && Array.isArray(userClasses)) {
             // Filter to only include "live" notebooks and prepend the "Add New" notebook
             const liveNotebooks = userClasses
@@ -94,6 +101,7 @@ const ListOfLectures = ({ navigation }) => {
                 abbrevDate: l.abbrevDate,
                 className: l.className,
                 classId: l.classId,
+                rawNotesId: l.rawNotesId,
               }));
 
             setNotebooks([...liveNotebooks]);
@@ -104,14 +112,39 @@ const ListOfLectures = ({ navigation }) => {
           console.error("Failed to fetch classes:", error);
         }
       } else {
-        console.log("No user found");
+        console.log("No user found in lecture fetch");
       }
     }
 
     fetchClasses();
-  }, [user]);
+  }, [user, navigation, route]);
 
-  const onNotebookPress = (notebook) => {};
+  const onNotebookPress = (lecture) => {
+    try {
+      if (user) {
+        navigation.navigate("HomeStackNavigator", {
+          screen: "ListOfNotebooks",
+        });
+        setTimeout(() => {
+          navigation.navigate("NewLectureNavigator", {
+            screen: "Lecture",
+            params: {
+              email: user.email,
+              notebook: notebook,
+              classId: notebook.classId,
+              lectureId: lecture.lectureId,
+              lectureName: lecture.lectureName,
+              abbrevDate: lecture.abbrevDate,
+              rawNotesId: lecture.rawNotesId,
+              fromChooseGetText: false,
+            },
+          });
+        }, 1);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const [renameSheetVisible, setRenameSheetVisible] = useState(false);
   const [currentNotebookName, setCurrentNotebookName] = useState("");
@@ -293,46 +326,91 @@ const ListOfLectures = ({ navigation }) => {
   };
 
   const addNotebook = async () => {
-    console.log("handleCreateClass called with:", newNotebookName); // Debugging output
-
-    if (newNotebookName) {
-      // Ensure we are using the correct state variable
-      try {
+    // Ensure we are using the correct state variable
+    try {
+      if (user) {
         const lectureId = uuid.v4();
+        const rawNotesId = uuid.v4();
         const abbrevDate = getAbbreviatedDate();
+
         const newLecture = {
-          lectureName: newNotebookName,
+          lectureName: "Untitled Lecture",
           status: "live",
           lectureId: lectureId,
           abbrevDate: abbrevDate,
           className: notebook.name,
-          lectureId,
+          rawNotesId: rawNotesId,
         };
+        console.log({
+          lectureName: "Untitled Lecture",
+          status: "live",
+          lectureId: lectureId,
+          abbrevDate: abbrevDate,
+          className: notebook.name,
+          rawNotesId: rawNotesId,
+        });
         await createLecture(
           String(user.email),
-          String(thisNotebook.classId),
-          thisNotebook.name,
-          newNotebookName,
+          String(notebook.classId),
+          notebook.name,
+          "Untitled Lecture",
           abbrevDate,
-          lectureId
+          lectureId,
+          rawNotesId
         );
+        console.log({
+          email: String(user.email),
+          classId: String(notebook.classId),
+          lectureId: lectureId,
+          rawNotesId: rawNotesId,
+        });
+        try {
+          await createRawNotes(
+            String(user.email),
+            String(notebook.classId),
+            String(lectureId),
+            String(rawNotesId)
+          );
+        } catch (e) {
+          console.log(e);
+        }
         console.log("Lecture created successfully"); // Debugging output
+        console.log("attempting to setNotebooks");
 
         setNotebooks((prevClasses) => [...prevClasses, newLecture]);
-        setNewNotebookName("");
-        hideBottomSheet();
-      } catch (error) {
-        console.error("Error creating class:", error);
-        // Optionally, show an error message to the user
-      }
-    } else {
-      console.log("No class name provided"); // Debugging output
-    }
-  };
+        console.log("attempting to setNewNotebookName");
 
-  const handleGoBack = () => {
-    navigation.navigate("ListOfNotebooks");
-    setOpenNotebook(null);
+        setNewNotebookName("");
+        console.log("attempting to navigate");
+
+        hideBottomSheet();
+        console.log("attempting to navigate");
+
+        if (user) {
+          navigation.navigate("HomeStackNavigator", {
+            screen: "ListOfNotebooks",
+          });
+          setTimeout(() => {
+            navigation.navigate("NewLectureNavigator", {
+              screen: "Lecture",
+              params: {
+                email: user.email,
+                notebook: notebook,
+                classId: notebook.classId,
+                lectureId: lectureId,
+                lectureName: "Untitled Lecture",
+                abbrevDate: abbrevDate,
+                rawNotesId: rawNotesId,
+                fromChooseGetText: false,
+              },
+            });
+          }, 1);
+        }
+      }
+    } catch (error) {
+      console.log("Error creating class:", error);
+      // Optionally, show an error message to the user
+    }
   };
 
   const fullWidth = Dimensions.get("window").width;
@@ -364,7 +442,7 @@ const ListOfLectures = ({ navigation }) => {
           {!openNotebook && (
             <TouchableOpacity
               style={styles.newLectureButton}
-              onPress={addNewNotebook}
+              onPress={addNotebook}
             >
               <Text style={styles.plusIcon}>+</Text>
               <Text style={styles.newLectureText}>New Lecture</Text>
@@ -409,15 +487,6 @@ const ListOfLectures = ({ navigation }) => {
           activeOpacity={1}
           style={StyleSheet.absoluteFill}
           onPress={handleCancelDelete}
-        />
-      )}
-      {aPopUpIsVisible && (
-        <TouchableOpacity
-          activeOpacity={1}
-          style={StyleSheet.absoluteFill}
-          onPress={() => {
-            setAPopupIsVisible(false);
-          }}
         />
       )}
       {isBottomSheetVisible && (
@@ -605,12 +674,13 @@ const styles = StyleSheet.create({
     borderColor: "black",
     borderRadius: 4,
     padding: 10,
-    zIndex: 2,
+    zIndex: 20,
   },
   popupText: {
     fontSize: 16,
     color: "black",
-    padding: 8,
+    padding: 10,
+    textAlign: "center",
   },
   renameBottomSheet: {
     position: "absolute",
@@ -675,6 +745,12 @@ const styles = StyleSheet.create({
     margin: 0,
     marginBottom: 0,
     position: "relative", // Added to position children absolutely
+    zIndex: 1,
+  },
+  lecturePress: {
+    width: 160, // Approximately two items per row
+    height: 80,
+    opacity: 1,
   },
   lectureDate: {
     fontSize: 14,
@@ -683,7 +759,10 @@ const styles = StyleSheet.create({
   lectureName: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 24, // Adjusted to prevent overlap with the ellipsis icon
+    marginBottom: 24,
+    flexWrap: "wrap",
+    width: 130,
+    height: 50,
   },
   lectureNameDiv: {
     lectureNameDiv: {
@@ -699,8 +778,8 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     position: "absolute",
-    bottom: 28,
-    right: 2,
+    bottom: 37,
+    right: 13,
   },
 });
 
@@ -880,8 +959,8 @@ const Lecture = ({
     const notebookHeight = styles.lectureItem.height;
 
     // Calculate the position for the popup
-    const adjustedX = notebookWidth - menuIconX - popupWidth / 2 - 10;
-    const adjustedY = menuIconY + notebookHeight / 2 - popupHeight + 50;
+    const adjustedX = notebookWidth - menuIconX - popupWidth / 2 - 45;
+    const adjustedY = menuIconY + notebookHeight / 2 - popupHeight - 25;
 
     // Set the position state
     setPopupPosition({ x: adjustedX, y: adjustedY });
@@ -907,12 +986,14 @@ const Lecture = ({
 
   return (
     <View key={classId} style={styles.lectureItem}>
-      <Text style={styles.lectureDate}>{abbrevDate}</Text>
-      <Text style={styles.lectureName} numberOfLines={2}>
-        {title}
-      </Text>
-      <TouchableOpacity style={styles.menuIcon} onPress={handleMenuPress}>
-        <Ionicons name="ellipsis-vertical" size={24} color="black" />
+      <TouchableOpacity style={styles.lecturePress} onPress={onPress}>
+        <Text style={styles.lectureDate}>{abbrevDate}</Text>
+        <Text style={styles.lectureName} numberOfLines={2}>
+          {title}
+        </Text>
+        <TouchableOpacity style={styles.menuIcon} onPress={handleMenuPress}>
+          <Ionicons name="ellipsis-vertical" size={24} color="black" />
+        </TouchableOpacity>
       </TouchableOpacity>
       <Popup
         isVisible={popupVisible}

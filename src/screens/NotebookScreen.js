@@ -22,6 +22,7 @@ import MathView from "react-native-math-view";
 import { useAuth } from "../context/authContext";
 import { getAuth } from "firebase/auth";
 import { EXPO_PUBLIC_OPENAI_KEY } from "@env";
+
 import {
   getStorage,
   ref,

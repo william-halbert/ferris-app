@@ -2,8 +2,11 @@ import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthProvider } from "./src/context/authContext";
+import { HeaderBackButton } from "@react-navigation/elements";
+
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,9 +28,12 @@ import NewLecture from "./src/screens/NewLecture";
 import ListOfNotebooks from "./src/screens/listOfNotebooks";
 import ListOfLectures from "./src/screens/listOfLectures";
 import StartScreen from "./src/screens/startScreen";
+import Lecture from "./src/screens/lecture";
+import ChooseGetText from "./src/screens/Choose";
+import { app } from "./firebaseConfig";
 
-const HomeStack = createStackNavigator();
-const NewLectureStack = createStackNavigator();
+const HomeStack = createNativeStackNavigator();
+const NewLectureStack = createNativeStackNavigator();
 const SignInStack = createStackNavigator();
 
 const App = () => {
@@ -42,7 +48,7 @@ const App = () => {
 
 function IsSignedIn() {
   const { userInfo } = useAuth();
-  const auth = getAuth();
+  const auth = getAuth(app);
   const [signedIn, setSignedIn] = useState("starter");
   const [googleUser, setGoogleUser] = useState(null);
   const user = auth.currentUser;
@@ -94,7 +100,7 @@ function IsSignedIn() {
         clearInterval(intervalId);
       }
     };
-  }, [googleUser, userInfo]);
+  }, [googleUser, userInfo, user]);
 
   return (
     <NavigationContainer>
@@ -198,8 +204,40 @@ function NewLectureNavigator() {
         name="NewLecture"
         component={NewLecture}
         options={({ route }) => ({
+          headerShown: true,
+        })}
+      />
+      <NewLectureStack.Screen
+        name="Lecture"
+        component={Lecture}
+        options={{
           headerShown: false,
-          presentation: "modal",
+          presentation: "fullScreenModal",
+          tabBarVisible: false,
+        }}
+      />
+      <NewLectureStack.Screen
+        name="ChooseGetText"
+        component={ChooseGetText}
+        options={({ navigation }) => ({
+          headerShown: true,
+          presentation: "fullScreenModal",
+          tabBarVisible: false,
+          headerStyle: {
+            backgroundColor: "white",
+          },
+          headerTintColor: "black",
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
+          headerBackTitleVisible: false,
+          headerTitle: "",
+          headerLeft: () => (
+            <HeaderBackButton
+              onPress={() => navigation.navigate("Lecture")}
+              tintColor="black"
+            />
+          ),
         })}
       />
     </NewLectureStack.Navigator>

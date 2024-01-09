@@ -7,6 +7,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   signInWithPopup,
+  deleteUser,
 } from "firebase/auth";
 
 import {
@@ -18,6 +19,7 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -36,7 +38,7 @@ import {
   signInWithCredential,
 } from "firebase/auth";
 
-import { db } from "../../firebaseConfig";
+import { db, app } from "../../firebaseConfig";
 
 const AuthContext = React.createContext();
 
@@ -53,7 +55,7 @@ export function AuthProvider({ children }) {
   const storage = getStorage();
   const [noteInfo, setNoteInfo] = useState({ className: "", noteName: "" });
 
-  const auth = getAuth();
+  const auth = getAuth(app);
 
   async function uploadLectureImage(base64) {
     const storageRef = ref(storage, "some-child");
@@ -115,11 +117,62 @@ export function AuthProvider({ children }) {
     return "success";
   }
 
-  function logout() {
+  async function logout(userType) {
     try {
-      signOut(auth);
+      if (userType === "firebase") {
+        await signOut(auth);
+        console.log("successful firebase log out");
+      } else if (userType === "google") {
+        const userJson = await AsyncStorage.getItem("user");
+
+        if (userJson) {
+          const userData = JSON.parse(userJson);
+          const token = userData?.accessToken; // Extract the access token
+
+          if (token) {
+            await AuthSession.revokeAsync(
+              { token },
+              { revocationEndpoint: "https://oauth2.googleapis.com/revoke" }
+            );
+          }
+
+          await AsyncStorage.removeItem("user");
+          console.log("successful google log out");
+        }
+      }
+      return "success";
     } catch (err) {
-      setAuthError(err);
+      setAuthError(err); // Make sure this function is defined and handles the error appropriately
+    }
+  }
+
+  async function deleteAccount(user, email, userType) {
+    try {
+      if (userType === "firebase") {
+        await deleteDoc(doc(db, "users", email));
+        await deleteUser(user);
+        console.log("successful firebase delete user account");
+      } else if (userType === "google") {
+        await deleteDoc(doc(db, "users", email));
+        const userJson = await AsyncStorage.getItem("user");
+        if (userJson) {
+          const userData = JSON.parse(userJson);
+          const token = userData?.accessToken; // Extract the access token
+
+          if (token) {
+            await AuthSession.revokeAsync(
+              { token },
+              { revocationEndpoint: "https://oauth2.googleapis.com/revoke" }
+            );
+          }
+
+          await AsyncStorage.removeItem("user");
+          console.log("successful google delete user account");
+        }
+      }
+      return "success";
+    } catch (err) {
+      setAuthError(err); // Make sure this function is defined and handles the error appropriately
     }
   }
 
@@ -346,6 +399,7 @@ export function AuthProvider({ children }) {
     }
     return docSnap.data();
   }
+
   async function getSidebarInfo(uid) {
     const q = query(collection(db, "users", uid, "foldersAndChats"));
 
@@ -669,7 +723,8 @@ export function AuthProvider({ children }) {
     className,
     lectureName,
     abbrevDate,
-    lectureId
+    lectureId,
+    rawNotesId
   ) {
     const docData = {
       userId: String(uid),
@@ -680,15 +735,94 @@ export function AuthProvider({ children }) {
       createdDate: Timestamp.fromDate(new Date()),
       status: "live",
       lectureId: String(lectureId),
+      rawNotesId: String(rawNotesId),
     };
     try {
       const docRef = await setDoc(
         doc(db, "users", uid, "classes", classId, "lectures", lectureId),
         docData
       );
+      console.log("successful lecture creation");
+      return "success";
     } catch (e) {
       console.error(e);
     }
+  }
+
+  async function createRawNotes(email, classId, lectureId, rawNoteId) {
+    try {
+      const docData = {
+        email: String(email),
+        classId: String(classId),
+        lectureId: String(lectureId),
+      };
+      const docRef = await setDoc(
+        doc(
+          db,
+          "users",
+          email,
+          "classes",
+          classId,
+          "lectures",
+          lectureId,
+          "rawNotes",
+          rawNoteId
+        ),
+        docData
+      );
+      console.log("successful raw notes creation");
+      return "success";
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function getRawNotes(email, classId, lectureId, rawNoteId) {
+    const docRef = doc(
+      db,
+      "users",
+      email,
+      "classes",
+      classId,
+      "lectures",
+      lectureId,
+      "rawNotes",
+      rawNoteId
+    );
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+    } else {
+      // docSnap.data() will be undefined in this case
+      console.log("No such document!");
+    }
+    return docSnap.data();
+  }
+
+  async function saveRawNotes(email, classId, lectureId, rawNoteId, notes) {
+    try {
+      await setDoc(
+        doc(
+          db,
+          "users",
+          email,
+          "classes",
+          classId,
+          "lectures",
+          lectureId,
+          "rawNotes",
+          rawNoteId
+        ),
+        {
+          notes: notes,
+        },
+        { merge: true }
+      );
+      return "success";
+    } catch (error) {
+      console.error("Error saving transcript to Firestore: ", error);
+    }
+    return null;
   }
 
   async function getAllLectureNames(uid, classId) {
@@ -775,6 +909,10 @@ export function AuthProvider({ children }) {
     getAllLectureNames,
     deleteLecture,
     handleGoogleSignin,
+    createRawNotes,
+    getRawNotes,
+    saveRawNotes,
+    deleteAccount,
   };
 
   return (
